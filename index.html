@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <html lang="zh-CN en">
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+
+        <title>Github Page demo</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" type="text/css" media="screen" href="main.css" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <!--  页面样式-->
+        <link href="css.css" type="text/css" rel="stylesheet">
+            <!-- 搜索框-->
+        <link href="https://morvanzhou.github.io/stylesheets/syntax.css" type="text/css" rel="stylesheet">
+          <!--  教程下拉可选框依赖文件-->
+        <script type="text/javascript" src="https://lib.sinaapp.com/js/jquery/1.9.1/jquery-1.9.1.min.js"></script>
+          <!--  教程下拉可选框js配置-->
+        <script type="text/javascript">
+            $(document).ready(function(){
+            $('.clicker').on("click", function(e){
+              $(this).next('.dropdown-content').toggle();
+              e.stopPropagation();
+              e.preventDefault();
+            });
+            });
+        </script>
+
+    </head>
+
+
+    <body>
+    <header>
+        <nav id="home-nav">
+        <ul>
+            <li><a class="nav-home" href="https://makinaruto.github.io/MakiNaruto/" target="_blank"><strong>主页</strong></a></li>
+            <li><a href="https://www.baidu.com/" target="_blank">Baidu</a></li>
+            <li><a href="https://github.com/" target="_blank">Github</a></li>
+  <!--         <li>
+            <a class="search-bar clicker"><img class="search-img" src="/static/img/icon/search_icon.png" alt="Go"></a>
+
+            <form class="search-box dropdown-content" method="get" action="https://www.bing.com/search" target="_blank">
+              <input type="hidden" name="q1" value="site:morvanzhou.github.io" />
+              <input class="search-text" type="text" name="q" placeholder="Search.." size="20" value=""/>
+            </form>
+          </li> -->
+
+          <!--  教程下拉页面-->
+          <!-- tutorial navigation -->
+          <!--  一个li标签为一个下拉页面 
+              ul: unordered lists
+              ol: ordered lists
+              li: list item
+          -->     
+            <!-- <li class="dropbtn"><a class="clicker">点我 ▾</a>
+                
+                <ul class="dropdown-content">
+                    <li class="dropbtn">
+                      <a class="" href="/learning-steps/">
+                        <img class="icon-image" src="/static/img/icon/learning-steps.png">
+                        一
+                      </a>
+                    </li>
+                       
+                    <li class="dropbtn">
+                      <a class="clicker" href="">
+                        <img class="icon-image" src="/static/img/icon/python_icon.png">
+                        二 ▾
+                      </a>
+                      <ul class="dropdown-content">     
+                            <li><img class="icon-image" src="/static/img/icon/basic_icon.png" style="max-width:1.5em; max-height:1.1em;">
+                              <a href="https://wwww.baidu.com">2.1</a></li>
+                      </ul>             
+                    </li>  
+
+                </ul>
+
+            </li> -->    
+
+        </ul>
+        </nav>
+    </header>
+
+    <main>
+        <div class="pad-main section ie-size">
+            <h1 class="page-title">如何建立一个github pages</h1>
+
+            <p >
+                一个简单的github pages示例： <a href="https://makinaruto.github.io/MakiNaruto/" target="_blank" > MakiNaruto</a><br>
+                参考文章：<br>
+                <a href="https://www.jianshu.com/p/856aaace865a" target="_blank">一、Github Repository 的创建</a><br>
+                <a href="https://www.jianshu.com/p/7dcd97c8e0e3" target="_blank">二、本地搭建Git</a><br>
+                <a href="https://www.jianshu.com/p/3b584810dc25" target="_blank">三、同步到github，拥有属于你自己的github pages</a><br>
+                <hr>
+            </p>
+
+            <p >
+              这里是示例，我创建的Repository名字为MakiNaruto <br>
+              1.右键git bash 输入<a style="color:red">git clone https://makinaruto.github.io/MakiNaruto.git</a> <br>
+              这一步是将你的git download到本地 完成后会出现名为MakiNaruto的文件夹<br>
+              2.同步下来的文件夹，将你的html文件，js，css文件提交即可，纯html不依赖样式文件也可以<br>
+              输入以下命令提交你的页面:<br>
+            </p>
+
+            <p style="color:red; font-size:12px">
+              cd MakiNaruto<br>
+              git add .<br>
+              git commit -m "Add simple code"<br>
+              git push<br>
+            </p>
+            </p>
+              大功告成，查看一下 <a href="https://makinaruto.github.io/MakiNaruto/" target="_blank" >https://makinaruto.github.io/MakiNaruto/</a><br>
+              注意：目前发现一个问题，git push 的主页文件第一次生成后，只能更新不能删除该文件然后新添加，会导致主页丢失。
+            </p>
+
+            <hr>
+
+                
+        </div>
+
+
+    </main>
+
+    </body>
+
+</html>
