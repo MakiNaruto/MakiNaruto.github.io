@@ -1,0 +1,368 @@
+/* ================ DEFAULT FOR ALL PAGES ================ */
+
+/*定义常用的颜色及格式，方便用时快速输入*/
+:root {
+  --c-n-mofan: #44a371;/*#3d9667;*/
+  --c-n: #4cb07b;
+  --c-donation: var(--c-n);
+  --c-donation-hover: var(--c-n-mofan);
+  --c-about-table: #d8d8d8;
+  --c-green-no-hover: #191818;
+  --c-green-hover: #f2f2f2;
+  --c-p: #415849;
+  --c-tut-table: var(--c-n);
+  --c-tut-table-hover: var(--c-n-mofan);
+  /*引用格式 color: var(--c-green-no-hover);*/
+}
+
+
+#particles-js{
+    background:#1a222c;
+    display:flex;
+    vertical-align:bottom;
+    width:100%;
+    min-height:100vh;
+    background-repeat:no-repeat;
+    background-size:cover;
+    background-attachment:fixed
+}
+#particles-js .particles-js-canvas-el{
+    width:100%!important;
+    height:100vh!important
+}
+.header{
+    z-index:2;
+    text-align:center;
+    color:white;
+    position:absolute;
+    top:50%;
+    left:50%;
+    margin:0 auto;
+    -webkit-transform:translate(-50%,-50%);
+    transform:translate(-50%,-50%)
+}
+.header .site-title{
+    font-size:50px;
+    display:block;
+    line-height:1;
+    color:white
+}
+@media only screen and (min-width:550px){
+    .header .site-title{
+        margin:0;
+        font-size:100px
+    }
+}
+.header .site-description{
+    font-size:20px;
+    display:block;
+    line-height:1;
+    color:white;
+    margin-top:10px
+}
+
+.section {
+box-shadow: 0px 0px 5px #888888;
+background-color:#FAFAFA;
+filter: none !important;
+margin: 0.5em 0;
+}
+
+body {
+font-family: Hiragino Sans GB, Tahoma, Helvetica, Arial, Microsoft YaHei, WenQuanYi Micro Hei, 黑体, 宋体, sans-serif;
+font-weight: normal;
+font-size: 16px;
+margin: 0px;
+padding: 0px;
+background-color:#1a222c;
+filter: none !important;
+}
+
+
+/* ====== Headings ====== */
+/*各级标题字体设置*/
+h1, h2, h3, h4, h5 {
+color: black;
+}
+
+h1 {
+font-size: 2.5em;  
+text-align: center;  /*居中显示*/
+padding: 0.1em 0.2em;
+display: block;
+}
+
+h1.small-h1 {
+font-size: 1.8em;
+margin: 1em 0;
+}
+
+h2 {
+font-size: 2em;
+text-align: center;
+}
+
+h3 {
+font-size: 1.6em;
+text-align: center;
+padding-top: 2em;
+padding-bottom: 1em;
+}
+
+h4 {
+font-size: 1.5em;
+text-align: left;
+margin: 0.8em 0;
+}
+
+h5 {
+font-size: 1em;
+text-align: left;
+}
+
+/* ====== Paragraph ====== */
+p {
+line-height: 1.7em;
+padding: 0;
+text-align: justify;  /*justify 实现两端对齐文本效果。 */
+color: black;
+}
+
+/* ====== image ====== */
+/*?????*/
+.icon-image {
+max-height: 1.1em;
+width: 1.1em;
+padding-right: 0.4em;
+}
+
+.cycle-img {
+border-radius:50%;
+}
+
+
+
+/* ================== DEFAULT FOR PAGES =================== */
+/* 顶部部分下移*/
+#home-nav {
+height: 3.3em;
+vertical-align:middle;
+}
+
+
+/* ====== navigation bar ====== */
+
+/*顶部填充,自左向右分布一排*/
+#home-nav > ul {
+position: fixed;
+z-index: 5;
+top: 0;
+left: 0;
+list-style-type: none; /*列表无样式，放到一行*/
+font-size: 1.3em; /*字体放大倍数*/
+width: 100%;     /*底部宽度占满屏幕*/
+margin: 0;      /*顶部有空白顶上*/
+padding: 0;     /*左部有空白顶上*/
+opacity: 0.98;
+}
+
+/*顶部文字背景的设置，第一个设置颜色*/
+#home-nav > ul > li:first-child > a {
+background-color: #ffffff;
+filter: none !important;
+}
+
+/*顶部剩下背景的颜色*/
+#home-nav ul {
+background-color: #ffffff;
+display: inline-block;
+filter: none !important;
+}
+
+/* ul 内部的依次在上一个的右边排列*/
+#home-nav > ul > li > a {
+float: left;
+}
+
+/* tutorial dropdown */
+/*最后一个靠右*/
+#home-nav > ul > li:last-child {     
+float: right;
+}
+
+/*搜索图案的设置*/
+#home-nav .search-img {
+max-height:1.1em;
+vertical-align: middle;
+}
+
+/*搜索框默认隐藏*/
+.search-box {
+display: none;
+position: fixed;
+top: 2.5em;
+left: 12em;
+}
+
+/*搜索框内输入字体设置*/
+#home-nav .search-text {
+font-size:1em;
+border-radius:5px;
+border: 5px solid #4cb07b;
+}
+
+/*顶部字体颜色设置*/
+#home-nav a {
+color: var(--c-green-no-hover);
+color: #191818;
+vertical-align: middle;
+}
+
+/*   分布的间距变大*/
+#home-nav > ul > li > a, #home-nav > ul > li > a:link, #home-nav > ul > li > a:visited{
+text-decoration: none;
+text-align: center;
+margin: 0;
+padding: 0.5em 0.7em;
+line-height:1.5em;
+}
+
+
+/*顶部设为点击下拉框*/
+#home-nav > ul > li > ul {     
+max-height: 90%;
+overflow-y: scroll;
+overflow-x: hidden;
+position: fixed;
+display: none;
+top: 2.4em;
+right: 0em;
+text-decoration: none;
+list-style-type: none;
+margin: 0;
+padding: 0;
+box-shadow: -4px 4px 5px rgba(0,0,0,0.4);
+width: 40%;
+}
+
+/*默认关闭下拉*/
+#home-nav > ul > li > ul > li > ul {    
+display: none;
+background-color: transparent;
+text-decoration: none;
+list-style-type: none;
+padding: 0;
+margin: 0;
+}
+
+/* 右侧教程下拉菜单左对齐*/
+#home-nav > ul > li > ul > li > ul > li {
+background-color: transparent;
+margin: 0;
+padding: 0.2em 0em 0.2em 1em;
+text-align: left;
+width: 100%;
+}
+
+/* ====== main body ====== */
+/*主体居中*/
+
+main {
+margin: 0 auto;
+}
+
+/*上下边距的控制*/
+.pad-main {
+padding: 3em 4em;
+}
+
+/* ====== anchor ====== */
+/*鼠标指向按钮颜色加深效果*/
+#home-nav a:hover {
+/*background-color: #44a371;*/
+color:#f2f2f2;
+filter: none !important;
+}
+
+/*指向按键变为小手图标*/
+a:visited, a:link {
+color: #F56100;
+text-decoration: none;
+}
+
+a:hover {
+color: #FC8333;
+text-decoration: none;
+cursor: pointer;
+}
+
+
+
+/* ===================== more than 800px ==================== */
+/* ====== video ===== */
+@media screen and (min-width: 800px) {
+  main .video-container, main .video-container iframe, main .video-container object, main .video-container embed {
+  max-width: 800px;
+  margin: 0 auto;
+  }
+  main {
+    width: 800px;
+  }
+  main.tut-main {
+  margin: 0;
+  }
+  .tut-content-menu {
+  display: none;
+  }
+}
+
+@media screen and (min-width: 800px and max-width: 1000px) {
+  main.tut-main {
+    width: 100%;
+  }
+}
+
+@media screen and (min-width: 1000px) {
+  main.tut-main {
+    width: 1000px;
+    margin: 0 auto;
+  }
+}
+
+
+/* ======= IE ====== */
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+     .ie-size {
+     width: 700px;
+     margin: 0.5em auto;
+     }
+     .tut-right-bar {
+     width: calc(1000px - 700px);
+     }
+     .tut-post-main {
+     margin-left:10%;
+     }
+     @media screen and  (max-width: 40.5em) {
+     .ie-size {
+     width: 100%;
+     }
+     }
+}
+
+/* ===================== less than 800px ==================== */
+/* ======= tutorial content menu ========= */
+@media screen and (max-width: 800px) {
+  .tut-content-menu {
+  right: 1em;
+  }
+  main, main .tut-post-main {
+  width: 100%;
+  }
+  .tut-right-bar, .mobile-hid {
+  display: none;
+  }
+  main .video-container, main .video-container iframe, main .video-container object, main .video-container embed {
+  max-width: 100%;
+  margin: 0 auto;
+  }
+}

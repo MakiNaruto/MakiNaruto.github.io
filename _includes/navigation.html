@@ -1,0 +1,8 @@
+
+<!--  class="current"引用了 _sass\main.scss  以设置颜色  
+  assets\css  styles.scss以启用该文件 -->
+<nav>
+  {% for item in site.data.navigation %}
+    <a href="{{ item.link }}" {% if page.url == item.link %}  class="current"{% endif %}>{{ item.name }}</a>
+  {% endfor %}
+</nav>
