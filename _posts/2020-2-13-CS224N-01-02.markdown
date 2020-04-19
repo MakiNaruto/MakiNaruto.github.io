@@ -3,7 +3,7 @@ layout: post
 title: "Stanford / Winter 2020 CS224n 课程学习笔记01-02"
 subtitle: "Assignment"
 author: "MakiNaruto"
-header-img: "img/post-bg-dreamer.jpg"
+header-img: "img/WestWorld.jpg"
 header-mask: 0.4
 mathjax: true
 tags:
