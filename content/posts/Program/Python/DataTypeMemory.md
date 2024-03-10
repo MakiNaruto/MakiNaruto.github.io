@@ -1,8 +1,7 @@
 ---
 author : MakiNaruto
 title : Python - 数据类型所需内存
-subtitle : Python DataType Use Memory
-
+description : Python DataType Use Memory
 date : 2022-02-13
 tags:
   - Python
@@ -35,7 +34,7 @@ unsigned long:  8个字节
 ## 问题描述
 数据类型占用空间一般各语言相差不大，但奇怪的是，在python中数据所占空间却与其他语言不一样，如下图所示
 
-![](/content_img/python_memory/2.png)  
+![](/content_img/Python/Memory/1.png)  
 使用命令[sys.getsizeof()](https://docs.python.org/zh-cn/3/library/sys.html#module-sys)查询, 返回的数值以字节为单位.
 
 ## 究其原因
@@ -85,7 +84,7 @@ Bytes  type        scaling notes
                    first slot grows to 48, and so on.
 ```
 例如int类型，每当数值超过2^30增加4字节的空间占用
-![](/content_img/python_memory/2.png)  
+![](/content_img/Python/Memory/2.png)  
 
 ## 参考资料
 [A More Complete Answer](https://stackoverflow.com/questions/449560/how-do-i-determine-the-size-of-an-object-in-python)<br>

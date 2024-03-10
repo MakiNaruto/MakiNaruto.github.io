@@ -38,7 +38,7 @@ style = "dracula"
     enable = true
     [markup.goldmark.extensions.passthrough.delimiters]
         block = [['\[', '\]'], ['$$', '$$']]
-        inline = [['\(', '\)']]
+        inline = [['\(', '\)'], ['\$', '\$']]
 
 [markup.goldmark.renderer]
 unsafe = true
@@ -85,7 +85,7 @@ enable = true
 gravatarEmail = ""
 # Overwritten by your gravatar image if `gravatarEmail` is filled
 avatar = "img/MakiNaruto.jpg"
-bio = "a personal website"
+bio = "纵有疾风起, 人生不言弃"
 
 [params.social]
 zhihu = "valarzhu-morghulis"

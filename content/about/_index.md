@@ -8,4 +8,5 @@ aliases :
     -contact
 author : MakiNaruto
 comment : false 
+header_img : img/about-bg.jpg
 ---
