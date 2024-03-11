@@ -1,9 +1,32 @@
-{{ define "container" }}
+{{ define "main" }}
+  <!-- Main Content -->
+  <div class="container">
+    <div class="row">
 
-<div class="post-container">
- 
-  {{ .Content }}
-</div>
+      <div class="col-lg-8 col-lg-offset-1 col-md-8 col-md-offset-1 col-sm-12
+      col-xs-12 postlist-container">
+        {{ block "container" . }}
+        <div class="post-container">
+
+          {{ .Content }}
+        </div>
+        {{ end }}
+      </div>
+      <!-- Sidebar Container -->
+      <div class="col-lg-3 col-lg-offset-0 col-md-3 col-md-offset-0 col-sm-12
+      col-xs-12 sidebar-container">
+
+        <!-- Featured Tags -->
+        <!-- {{ partial "featured-tags.html" . }} -->
+        {{ partial "short-about.html" . }}
+        <!-- Friends Blog -->
+        {{ partial "friends.html" . }}
+
+      </div>
+
+
+  </div>
+
 
 {{ partial "comments.html" . }}
 
