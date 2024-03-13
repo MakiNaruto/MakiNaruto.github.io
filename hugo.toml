@@ -88,9 +88,8 @@ avatar = "img/MakiNaruto.jpg"
 bio = "纵有疾风起, 人生不言弃"
 
 [params.social]
-zhihu = "valarzhu-morghulis"
+zhihu = "makinaruto"
 github = "MakiNaruto"
-
 
 
 # See https://giscus.app/
