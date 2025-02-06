@@ -92,7 +92,7 @@
 {{ end }}
 
 
-{{ if not .Site.IsServer }}
+{{ if not .Site.Params.IsServer }}
 {{ template "_internal/google_analytics.html" . }}
 {{ end }}
 

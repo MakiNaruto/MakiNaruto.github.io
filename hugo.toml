@@ -4,7 +4,9 @@ title = "MakiNaruto's Blog"
 
 
 copyright = ""
-paginate = 10
+refLinksErrorLevel = "warning"
+[pagination]
+  pagerSize = 10
 
 enableInlineShortcodes = true
 enableEmoji = true
