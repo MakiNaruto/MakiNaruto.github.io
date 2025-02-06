@@ -1,0 +1,5 @@
+/layouts/*
+/public/*
+/resources/*
+hugo.toml
+.hugo_build.lock

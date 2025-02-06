@@ -2,7 +2,7 @@
 author : MakiNaruto
 title : SGD梯度下降拟合线性回归
 description : 利用梯度下降拟合一元回归学习笔记
-
+toc : true
 date : 2019-09-28
 tags : 
   - SGD

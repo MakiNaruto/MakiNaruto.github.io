@@ -2,7 +2,7 @@
 author : MakiNaruto
 title : 将 RNN 嵌入到 ENCODER–DECODER
 description : 阅读论文笔记：Neural Machine Translation by Jointly Learning to Align and Translate
-
+toc : true
 date : 2019-09-28
 tags : 
   - PaperNote

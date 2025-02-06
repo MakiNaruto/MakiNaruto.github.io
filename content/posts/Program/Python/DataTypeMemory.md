@@ -6,7 +6,7 @@ date : 2022-02-13
 tags:
   - Python
   - DataType
-
+toc : true
 header_img : img/Think-twice-code-once.jpg
 ---
 

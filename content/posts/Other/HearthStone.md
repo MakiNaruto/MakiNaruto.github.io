@@ -2,7 +2,7 @@
 author : MakiNaruto
 title : 炉石传说-究竟开多少包才能集齐巨龙降临全卡
 description : 炉石传说的的卡包概率。
-
+toc : true
 date : 2019-12-17
 tags : 
   - Game

@@ -2,7 +2,7 @@
 author : MakiNaruto
 title : Attention Is All You Need
 description : Attention Is All You Need阅读论文笔记，论文内提出了transformer模型
-
+toc : true
 date : 2019-10-29
 tags : 
   - PaperNote
