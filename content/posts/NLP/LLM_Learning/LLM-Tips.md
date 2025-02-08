@@ -1,13 +1,12 @@
 ---
 author : MakiNaruto
-title : 大模型学习之小知识点
-description : 大模型学习笔记
+title : LLM - Learning Tips
 toc : true
-date : 2025-01-21
+date : 2024-12-21
 tags : 
   - LLM
   - Tips
-  
+
 header_img : content_img/NLP/WestWorld.jpg
 
 ---
@@ -47,7 +46,7 @@ W' = W + ΔW<br>
 LoRA只操作模型的线性层, 并且一般不会对lm_head进行参数的更新.
 
 训练期间和训练后的 LoRA 示意图:
-![](/content_img/NLP/LLM-PT/lora.png)
+![](/content_img/NLP/LLM_Learning/LLM-Pipline/lora.png)
 
 
 [将 LoRA 权重合并到基础模型中](https://huggingface.co/docs/peft/main/en/conceptual_guides/lora) 
@@ -75,4 +74,4 @@ mask = torch.tensor([[1, 1, 0], [1, 0, 0], [1, 1, 1], [0, 0, 0], [1, 0, 1]])
 ```
 
 当我们将一些信息选为不关注时, 对信息的关注也是不同的, 如下图所示:
-![](/content_img/NLP/LLM-PT/attention_mask.png)
+![](/content_img/NLP/LLM_Learning/LLM-Pipline/attention_mask.png)

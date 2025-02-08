@@ -73,5 +73,5 @@ header_img : content_img/Other/HearthStone/drunkery.jpeg
 
 ### 实现效果
 1. [链接博客](posts/nlp/cs224n-01/)
-2. [链接博客+标题处]({{% relref "posts/nlp/cs224n-01/#动画演示" %}})
+2. [链接博客+标题处]({{% relref "posts/Other/markdown/#图片" %}})
 3. [百度](http://www.baidu.com)

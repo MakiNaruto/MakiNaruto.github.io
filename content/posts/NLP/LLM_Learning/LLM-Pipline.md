@@ -1,28 +1,29 @@
 ---
 author : MakiNaruto
-title : 大模型训练流程
+title : LLM - Training PipLine
 description : 一个完整的大模型的训练流程是如何进行的
 toc : true
 date : 2025-01-21
 tags : 
+  - LLM
   - PreTraining
   - PT
   - SFT
   - RM
   - DPO
-  
+
 header_img : content_img/NLP/WestWorld.jpg
 
 ---
 # 大模型工作流程
 预训练、有监督微调、RLHF(奖励建模、强化学习训练)和DPO(直接偏好优化)的主要流程图如下图所示:<br>
-![GPT训练流程](/content_img/NLP/LLM-PT/gpt_training.jpg)
+![GPT训练流程](/content_img/NLP/LLM_Learning/LLM-Pipline/gpt_training.jpg)
 
 下面会分开介绍, 每个流程训练时, 所处理的数据, 以及loss等核心模块做了什么.
 
 
 ## PT
-
+### 数据
 数据格式要求: 清洗过的大段连续文本即可, 如txt.
 ```txt
 第一章论
@@ -48,7 +49,7 @@ header_img : content_img/NLP/WestWorld.jpg
 <b>attention_mask</b>: 1表示该token是会被关注的信息, 0表示不关注. 在计算注意力分数softmax时，attention_mask为0的值将为0, 因此其他的信息会获得更多的关注.<br> 
 <b>labels</b>: 用于预测时, 计算loss.<br>
 
-### LOSS
+### Loss
 
 计算loss时, 对logits张量进行切片操作，去掉logits最后一维的最后一个元素, 同时去掉labels的第一个元素. 即构成一个序列对, 每一个词都有一个对应的下一个词.<br>
 因此, 当输入经过模型后, 为使总体损失降至最优, 可以理解为模型会优化每一个词的预测损失, 达到对输入的 next word|sentence predict.
@@ -77,6 +78,7 @@ def ForCausalLMLoss(
 
 
 ## SFT
+### 数据
 数据格式要求: QA格式, 需一问一答.
 ```
 [
@@ -108,6 +110,7 @@ def ForCausalLMLoss(
 和PT阶段一样.
 
 ## RM
+### 数据
 数据格式要求: 至少要给定三部分内容, 问题, 偏好答案, 弃用答案.
 ```json
 {
@@ -158,10 +161,10 @@ loss = -torch.nn.functional.logsigmoid(rewards_chosen - rewards_rejected).mean()
 根据公式, 当模型正确地选择了 input_ids_chosen，即 rewards_chosen 比 rewards_rejected 越大时，损失函数的值越趋近于0, 模型会得到正反馈。<br>
 
 $$\text{LogSigmoid}(x) = \log\left(\frac{ 1 }{ 1 + \exp(-x)}\right)$$
-<img src="/content_img/NLP/LLM-PT/log_sigmoid.png" width="50%" title="log_sigmoid">
+<img src="/content_img/NLP/LLM_Learning/LLM-Pipline/log_sigmoid.png" width="50%" title="log_sigmoid">
 
 
-## DPO（Direct Preference Optimization）
+## DPO(Direct Preference Optimization)
 
 DPO 是一种新的强化学习算法，它通过直接优化偏好（即对比反馈）来训练模型，而非传统的奖励函数。这意味着 DPO 在训练过程中使用的是正向和负向反馈信息，而非绝对奖励值，这样能更加直接地从人类反馈中学习。
 
@@ -176,11 +179,11 @@ DPO 是一种新的强化学习算法，它通过直接优化偏好（即对比�
 DPO的实现：
 1. 直接优化 LM 来对齐人类偏好，无需建模 reward model 和强化学习阶段。基于 RL 的目标函数可以通过优化二分 cross entropy 目标来优化。<br>
 2. 数据格式要求: 和RM阶段使用数据类似, 至少要给定三部分内容, 问题, 偏好答案, 弃用答案.<br>
-3. 与之前的不一样, 在这个阶段, 训练器不再使用 transformer.Trainer, 而是使用 trl.DPOTrainer.<br>
-官方示例文档: https://huggingface.co/docs/trl/main/en/dpo_trainer#trl.DPOTrainer<br>
+3. 与之前的不一样, 走强化学习的方式来优化目标Loss, 训练器不再使用 transformer.Trainer, 而是使用 trl.*Trainer, 如[trl.DPOTrainer](https://huggingface.co/docs/trl/main/en/dpo_trainer#trl.DPOTrainer).<br>
 
 相应的, 经过DPOTrainer 提供的 def tokenize_row()数据处理方法, 将数据处理成如下格式: 
 
+### 数据
 ```json
 {
     "prompt": ["<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n\n<|im_start|>user\n在这个任务中，你将.....,E 事情 \n答案："], 
@@ -213,7 +216,7 @@ DPOTrainer需要的数据结构变化如下, 但实际上和RM阶段需要的数
 ```
 
 
-### LOSS
+### Loss
 
 DPO的优化目标, 公式:
 
@@ -223,67 +226,18 @@ $$\mathcal{L}_{\mathrm{DPO}}\left(\pi_\theta ; \pi_{\mathrm{ref}}\right)=-\mathb
 由于不需要reward model, 仅仅使用一个模型, 通过对偏好数据和拒绝数据得到模型的对数概率, 最终进行对数值的loss值的计算.
 可以看到dpo_loss计算时, 可以采用不同的loss计算方式, 默认损失计算方式为sigmoid.
 
-代码片段
+#### 代码片段
+只列出了最核心的部分, 具体细节可以看源码: https://github.com/huggingface/trl/blob/main/trl/trainer/dpo_trainer.py#L1344 
 ```python
-def concatenated_forward(
-    self, model: nn.Module, batch: Dict[str, Union[List, torch.LongTensor]]
-) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
-    """Run the given model on the given batch of inputs, concatenating the chosen and rejected inputs together.
-
-    We do this to avoid doing two forward passes, because it's faster for FSDP.
+def concatenated_forward(self, model, batch):
     """
-    concatenated_batch = self.concatenated_inputs(
-        batch,
-        is_encoder_decoder=self.is_encoder_decoder,
-        label_pad_token_id=self.label_pad_token_id,
-        padding_value=self.padding_value,
-        device=self.accelerator.device,
-    )
-    len_chosen = batch["chosen_labels"].shape[0]
-
-    model_kwargs = (
-        {
-            "labels": concatenated_batch["concatenated_labels"],
-            "decoder_input_ids": concatenated_batch.pop("concatenated_decoder_input_ids", None),
-        }
-        if self.is_encoder_decoder
-        else {}
-    )
-    
-    #  执行模型前向传播
-    all_logits = model(
-        concatenated_batch["concatenated_input_ids"],
-        attention_mask=concatenated_batch["concatenated_attention_mask"],
-        use_cache=False,
-        **model_kwargs,
-    ).logits
-    
-    # 计算所有样本的对数概率
-    all_logps = self.get_batch_logps(
-        all_logits,
-        concatenated_batch["concatenated_labels"],
-        average_log_prob=self.loss_type == "ipo",
-        is_encoder_decoder=self.is_encoder_decoder,
-        label_pad_token_id=self.label_pad_token_id,
-    )
-    
-    # 分离选择和拒绝样本的对数概率
-    chosen_logps = all_logps[:len_chosen]
-    rejected_logps = all_logps[len_chosen:]
-    
-    # 分离选择和拒绝样本的logits
-    chosen_logits = all_logits[:len_chosen]
-    rejected_logits = all_logits[len_chosen:]
-
+    返回 模型预测的"选择", "拒绝"动作的对数概率与logits
+    """
+    ...
     return (chosen_logps, rejected_logps, chosen_logits, rejected_logits)
 
 
-def get_batch_loss_metrics(
-    self,
-    model,
-    batch: Dict[str, Union[List, torch.LongTensor]],
-    train_eval: Literal["train", "eval"] = "train",
-):
+def get_batch_loss_metrics( self, model, batch):
     """Compute the DPO loss and other metrics for the given batch of inputs for train or test."""
     metrics = {}
     (
@@ -294,30 +248,14 @@ def get_batch_loss_metrics(
     ) = self.concatenated_forward(model, batch)
 
     # 获取参考模型的预测结果
-    # 如果批次数据中包含参考模型的预测结果，则直接使用
+    # 1. 如果批次数据中包含参考模型的预测结果，则直接使用
     if "reference_chosen_logps" in batch and "reference_rejected_logps" in batch:
         reference_chosen_logps = batch["reference_chosen_logps"]
         reference_rejected_logps = batch["reference_rejected_logps"]
-    # 否则，使用当前类的参考模型进行预测
-    else:
-        with torch.no_grad():
-            if self.ref_model is None:
-                # 使用一个特殊的上下文，表示没有参考模型
-                with self.null_ref_context():
-                    (
-                        reference_chosen_logps,
-                        reference_rejected_logps,
-                        _,
-                        _,
-                    ) = self.concatenated_forward(self.model, batch)
-            # 使用定义的参考模型进行预测
-            else:
-                (
-                    reference_chosen_logps,
-                    reference_rejected_logps,
-                    _,
-                    _,
-                ) = self.concatenated_forward(self.ref_model, batch)
+    # 2. 否则，使用当前类的参考模型进行预测
+    #   2.1 没有参考模型
+    #   2.2 使用参考模型进行预测
+    (reference_chosen_logps, reference_rejected_logps, _,  _,) = self.concatenated_forward(self.ref_model, batch)
 
     # 计算DPO损失和其他指标
     losses, chosen_rewards, rejected_rewards = self.dpo_loss(
@@ -329,112 +267,40 @@ def get_batch_loss_metrics(
     # dpo_loss函数计算DPO损失，并返回奖励值
     reward_accuracies = (chosen_rewards > rejected_rewards).float()
     # 计算奖励准确率，即选择动作的奖励是否大于拒绝动作的奖励
-    
-    # 计算并存储各种指标
-    prefix = "eval_" if train_eval == "eval" else ""
-    metrics[f"{prefix}rewards/chosen"] = chosen_rewards.mean().cpu()
-    metrics[f"{prefix}rewards/rejected"] = rejected_rewards.mean().cpu()
-    metrics[f"{prefix}rewards/accuracies"] = reward_accuracies.mean().cpu()
-    metrics[f"{prefix}rewards/margins"] = (chosen_rewards - rejected_rewards).mean().cpu()
-    metrics[f"{prefix}logps/rejected"] = policy_rejected_logps.detach().mean().cpu()
-    metrics[f"{prefix}logps/chosen"] = policy_chosen_logps.detach().mean().cpu()
-    metrics[f"{prefix}logits/rejected"] = policy_rejected_logits.detach().mean().cpu()
-    metrics[f"{prefix}logits/chosen"] = policy_chosen_logits.detach().mean().cpu()
+    if self.args.rpo_alpha is not None:
+        losses = losses + self.args.rpo_alpha * model_output["nll_loss"]  # RPO loss from V3 of the paper
 
+    if self.use_weighting:
+        losses = losses * model_output["policy_weights"]
+
+    if self.aux_loss_enabled:
+        losses = losses + self.aux_loss_coef * model_output["aux_loss"]
+    # 计算并存储各种指标
+    metrics[...] = ...
+    ...
     return losses.mean(), metrics  # 返回平均损失和指标字典
 
 
-def dpo_loss(
-    self,
-    policy_chosen_logps: torch.FloatTensor,
-    policy_rejected_logps: torch.FloatTensor,
-    reference_chosen_logps: torch.FloatTensor,
-    reference_rejected_logps: torch.FloatTensor,
-) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
-    """Compute the DPO loss for a batch of policy and reference model log probabilities.
-
-    Args:
-        policy_chosen_logps: 策略模型对选择响应的对数概率. Shape: (batch_size,)
-        policy_rejected_logps: 策略模型对拒绝响应的对数概率 Shape: (batch_size,)
-        reference_chosen_logps: 参考模型对选择响应的对数概率. Shape: (batch_size,)
-        reference_rejected_logps: 参考模型对拒绝响应的对数概率. Shape: (batch_size,)
-
-    Returns:
-        A tuple of three tensors: (losses, chosen_rewards, rejected_rewards).
-        losses：每个样本的DPO损失。
-        chosen_rewards：选择响应的奖励。
-        rejected_rewards：拒绝响应的奖励。
-    """
-    # 计算策略模型对选择响应和拒绝响应的对数概率差，称为 策略模型的对数比率（log-ratio）。
-    # 这个值衡量了策略模型对选择响应的偏好程度。
-    pi_logratios = policy_chosen_logps - policy_rejected_logps
-    # 不使用参考模型
-    if self.reference_free:
-        # 设置值为0, 表示没有参考模型的对数比率。
-        ref_logratios = torch.tensor([0], dtype=pi_logratios.dtype, device=pi_logratios.device)
-    else:
-        # 计算参考模型的对数比率，即参考模型对选择响应和拒绝响应的对数概率差。
-        ref_logratios = reference_chosen_logps - reference_rejected_logps
-
-    pi_logratios = pi_logratios.to(self.accelerator.device)
-    ref_logratios = ref_logratios.to(self.accelerator.device)
-    logits = pi_logratios - ref_logratios
-
-    # The beta is a temperature parameter for the DPO loss, typically something in the range of 0.1 to 0.5.
-    # We ignore the reference model as beta -> 0. The label_smoothing parameter encodes our uncertainty about the labels and
-    # calculates a conservative DPO loss.
-    if self.loss_type == "sigmoid":
-        losses = (
-            -F.logsigmoid(self.beta * logits) * (1 - self.label_smoothing)
-            - F.logsigmoid(-self.beta * logits) * self.label_smoothing
-        )
-    elif self.loss_type == "hinge":
-        losses = torch.relu(1 - self.beta * logits)
-    elif self.loss_type == "ipo":
-        # eqn (17) of the paper where beta is the regularization parameter for the IPO loss, denoted by tau in the paper.
-        losses = (logits - 1 / (2 * self.beta)) ** 2
-    elif self.loss_type == "kto_pair":
-        # eqn (7) of the HALOs paper
-        chosen_KL = (policy_chosen_logps - reference_chosen_logps).mean().clamp(min=0)
-        rejected_KL = (policy_rejected_logps - reference_rejected_logps).mean().clamp(min=0)
-
-        chosen_logratios = policy_chosen_logps - reference_chosen_logps
-        rejected_logratios = policy_rejected_logps - reference_rejected_logps
-        # As described in the KTO report, the KL term for chosen (rejected) is estimated using the rejected (chosen) half.
-        losses = torch.cat(
-            (
-                1 - F.sigmoid(self.beta * (chosen_logratios - rejected_KL)),
-                1 - F.sigmoid(self.beta * (chosen_KL - rejected_logratios)),
-            ),
-            0,
-        )
-    else:
-        raise ValueError(
-            f"Unknown loss type: {self.loss_type}. Should be one of ['sigmoid', 'hinge', 'ipo', 'kto_pair']"
-        )
-
-    chosen_rewards = (
-        self.beta
-        * (
-            policy_chosen_logps.to(self.accelerator.device) - reference_chosen_logps.to(self.accelerator.device)
-        ).detach()
-    )
-    rejected_rewards = (
-        self.beta
-        * (
-            policy_rejected_logps.to(self.accelerator.device)
-            - reference_rejected_logps.to(self.accelerator.device)
-        ).detach()
-    )
-
+def dpo_loss(self, policy_chosen_logps, policy_rejected_logps, reference_chosen_logps, reference_rejected_logps):
+    ...
     return losses, chosen_rewards, rejected_rewards
 
 
 ```
 
-## PPO
-PPO（Proximal Policy Optimization）<br>
-PPO 是一种基于策略梯度的强化学习算法，旨在通过限制更新步长来减少策略更新时的变化过大，从而提高稳定性。它通过"裁剪"目标函数来避免策略更新过快（从而导致训练的不稳定）。
+## PPO(Proximal Policy Optimization)
+
+PPO 是一种基于策略梯度的强化学习算法，旨在通过限制更新步长来减少策略更新时的变化过大，从而提高稳定性。它通过"裁剪"目标函数来避免策略更新过快（从而导致训练的不稳定）。其在LLM训练的主要流程如图所示.
+![PPO](/content_img/NLP/LLM_Learning/LLM-Pipline/pipline.png)
+
+如上图，在RLHF-PPO阶段，一共有四个主要模型，分别是：
+
+<b>Actor Model</b>：更新权重, SFT Model，这就是我们想要训练的目标语言模型<br>
+<b>Critic Model</b>：更新权重, Reward Model(从RM初始化而来)，它的作用是预估总收益<br>
+<b>Reward Model</b>：不更新权重, Reward Model，它的作用是计算即时收益<br>
+<b>Reference Model</b>：不更新权重, SFT Model(KL散度接近)，它的作用是在RLHF阶段给语言模型增加一些“约束”，防止语言模型训歪（朝不受控制的方向更新，效果可能越来越差）
+
+Critic/Reward/Reference Model共同组成了一个“奖励-loss”计算体系，综合它们的结果计算loss，用于更新Actor和Critic Model
 
 优点：
 1. 稳定性：PPO 通过对目标函数进行裁剪，避免了策略的过大更新，减少了训练过程中的不稳定性。
@@ -445,8 +311,16 @@ PPO 是一种基于策略梯度的强化学习算法，旨在通过限制更新�
 1. 适用场景限制：PPO 偏向于需要大量交互并且训练时间较长的任务，对于某些即时反馈或小样本场景可能表现不佳。
 2. 计算资源要求：尽管相比其他方法更为高效，但在处理大型问题时，仍然需要较为充足的计算资源。
 
+同样的, RL训练器使用 [trl.PPOTrainer](https://huggingface.co/docs/trl/main/en/ppo_trainer#ppo-trainer).<br>
+待续... 先mark一下, 学明白了后更新.<br>
+### 数据
+...
+
+### Loss
+具体代码实现: https://github.com/huggingface/trl/blob/main/trl/trainer/ppo_trainer.py#L500
+
 ### 推荐阅读文章
-先mark一下, 学明白了后更新.<br>
+
 [图解大模型RLHF系列之：人人都能看懂的PPO原理与源码解读](https://zhuanlan.zhihu.com/p/677607581)<br>
 [PPO理论推导+代码实战](https://zhuanlan.zhihu.com/p/13467768873)<br>
 
@@ -464,20 +338,12 @@ PPO 是一种基于策略梯度的强化学习算法，旨在通过限制更新�
 
 
 <div style="display: flex; justify-content: space-between;">
-<img src="/content_img/NLP/LLM-PT/pipline.png" width="40%" title="PPO">
-<img src="/content_img/NLP/LLM-PT/rlhf.png" width="40%" title="DPO">
+<img src="/content_img/NLP/LLM_Learning/LLM-Pipline/pipline.png" width="40%" title="PPO">
+<img src="/content_img/NLP/LLM_Learning/LLM-Pipline/rlhf.png" width="40%" title="DPO">
 </div>
 
-如上图，在RLHF-PPO阶段，一共有四个主要模型，分别是：
 
-<b>Actor Model</b>：更新权重, SFT Model，这就是我们想要训练的目标语言模型<br>
-<b>Critic Model</b>：更新权重, Reward Model(从RW初始化而来)，它的作用是预估总收益<br>
-<b>Reward Model</b>：不更新权重, Reward Model，它的作用是计算即时收益<br>
-<b>Reference Model</b>：不更新权重, SFT Model(KL散度接近)，它的作用是在RLHF阶段给语言模型增加一些“约束”，防止语言模型训歪（朝不受控制的方向更新，效果可能越来越差）
-
-Critic/Reward/Reference Model共同组成了一个“奖励-loss”计算体系，综合它们的结果计算loss，用于更新Actor和Critic Model
-
-[//]: # (![PPO-RLHF]&#40;/content_img/NLP/LLM-PT/pipline.png  "sigmoid_U的更新"&#41;)
+[//]: # (![PPO-RLHF]&#40;/content_img/NLP/LLM_Learning/LLM-Pipline/pipline.png  "sigmoid_U的更新"&#41;)
 
 [//]: # (![DPO-RLHF]&#40;https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/rlhf/rlhf.png&#41;)
 

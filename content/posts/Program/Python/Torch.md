@@ -2,7 +2,7 @@
 author : MakiNaruto
 title : Torch 一些使用的小Tips
 description : 使用过程中遇到的一些问题的记录.
-date : 2022-02-13
+date : 2022-05-17
 tags:
   - Python
   - Pytorch

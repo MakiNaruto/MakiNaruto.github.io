@@ -24,15 +24,15 @@ header_img : content_img/NLP/WestWorld.jpg
 
 我们先看一个大概的流程
 
-![](/content_img/NLP/RNN/1.webp)
+![](/content_img/NLP/CS224N/RNN/1.webp)
 
 $c$当作 Decoder 的每一时刻输入，则是 Seq2Seq 模型的第一种模型：
 
-![](/content_img/NLP/RNN/2.webp)
+![](/content_img/NLP/CS224N/RNN/2.webp)
 
 如果直接将$c$ 输入到 Decoder 中，则是 Seq2Seq 模型的第二种模型：
 
-![](/content_img/NLP/RNN/3.webp)
+![](/content_img/NLP/CS224N/RNN/3.webp)
 
 即我们要在Encoder内计算隐状态$h_{i}$ ，最后得到中间语义向量$c$，将其送入Decoder，再由Decode进行解析，输出每次对应的$y_{i}$在其先验条件下的输出概率最大的词。
 
@@ -47,7 +47,6 @@ $c$当作 Decoder 的每一时刻输入，则是 Seq2Seq 模型的第一种模�
 
 $$h_{t}=f\left(x_{t}, h_{t-1}\right) \tag{1}$$
 这里对于RNN的激活函数$f$，作者使用Choet 等人(2014a) <sup>1</sup>提出的门控隐藏单元。
-![](https://upload-images.jianshu.io/upload_images/17373898-d6deb9fa8ba34e05.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
 再通过计算得到中间语义向量$c$
 $$c=q\left(\left\{h_{1}, \cdots, h_{T_{x}}\right\}\right)$$
@@ -60,7 +59,7 @@ $$c=q\left(\left\{h_{1}, \cdots, h_{T_{x}}\right\}\right)$$
 $$p\left(y_{i} | y_{1}, \ldots, y_{i-1}, \mathbf{x}\right)=g\left(y_{i-1}, s_{i}, c_{i}\right) \tag{3}$$
 
 <!-- ![论文中的模型图](/content_img/NLP/RNN/4.webp) -->
-<img src="/content_img/NLP/RNN/4.webp" style="zoom:100%;" alt="卡牌统计" align=center />
+<img src="/content_img/NLP/CS224N/RNN/4.webp" style="zoom:100%;" alt="卡牌统计" align=center />
 
 大概结构和流程搞清楚后，进入Encoder部分，$h_{t}$计算方法已经给出，来看看剩下的个参数是如何计算得出的
 
@@ -144,7 +143,7 @@ $$t_{i} = \left [ max\left \{ \tilde{t}_{i,2j-1},\tilde{t}_{i,2j} \right \} \rig
 $$\tilde{t}_{i}= U_{o}s_{i-1}+V_{o}Ey_{i-1}+C_{o}c_{i}\tag{5}$$
 
 解码器的隐藏状态$s_{i}$，是通过编码器给出的注释经过计算得到的(应该是这个意思)
-![](/content_img/NLP/RNN/5.webp)
+![](/content_img/NLP/CS224N/RNN/5.webp)
 
 $$s_{i}=f\left(s_{i-1}, y_{i-1}, c_{i}\right)\tag{7.1}$$
 
