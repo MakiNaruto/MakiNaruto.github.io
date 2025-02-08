@@ -337,14 +337,6 @@ Critic/Reward/Reference Model共同组成了一个“奖励-loss”计算体系�
 4. 上述过程完毕后, 模型的状态从 $S_{t}$, 变为$S_{t+1}$，输入问题从"A"变成 -  "A + 新产出的token"<br>
 
 
-<div style="display: flex; justify-content: space-between;">
-<img src="/content_img/NLP/LLM_Learning/LLM-Pipline/pipline.png" width="40%" title="PPO">
-<img src="/content_img/NLP/LLM_Learning/LLM-Pipline/rlhf.png" width="40%" title="DPO">
-</div>
-
-
-[//]: # (![PPO-RLHF]&#40;/content_img/NLP/LLM_Learning/LLM-Pipline/pipline.png  "sigmoid_U的更新"&#41;)
-
 [//]: # (![DPO-RLHF]&#40;https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/rlhf/rlhf.png&#41;)
 
 ### 参考文章
