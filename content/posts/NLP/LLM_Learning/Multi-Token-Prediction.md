@@ -17,7 +17,7 @@ header_img : content_img/NLP/WestWorld.jpg
 例如, [Better & Faster Large Language Models via Multi-token Prediction](https://arxiv.org/pdf/2404.19737), 通过设置, 并训练训练共享的多头模型. 如下图所示.
 ![](/content_img/NLP/LLM_Learning/Multi-Token-Prediction/Multi-token.png)
 
-### [DeepSeek-v3版实现](deepseek-v3:https://arxiv.org/pdf/2412.19437)<br>
+### [DeepSeek-v3版实现](https://arxiv.org/pdf/2412.19437)<br>
 
 MTP实现图如图所示
 ![MTP](/content_img/NLP/LLM_Learning/Multi-Token-Prediction/MTP-Model.png)

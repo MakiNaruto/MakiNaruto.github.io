@@ -13,7 +13,7 @@ header_img : content_img/NLP/WestWorld.jpg
 ---
 ## KV-cache
 由于基于Transformer的LLM参数量都很大, 占用显存很大, 所以优化显存自然成了主要目的.
-复习一下[MHA公式](https://makinaruto.github.io/posts/nlp/transformer/#22--multi-head-attention), 在推理时, 发现每个计算出的KQV前序列是一样的, 为了避免重复计算, 提出把前序计算好的缓存起来，使用的时候, 直接取就好. 这也就是目前主流的KV-cache的机制.
+复习一下[MHA公式]({{% relref "/posts/NLP/LLM_Learning/Transformer.md/#2--multi-head-attention" %}}), 在推理时, 发现每个计算出的KQV前序列是一样的, 为了避免重复计算, 提出把前序计算好的缓存起来，使用的时候, 直接取就好. 这也就是目前主流的KV-cache的机制.
 
 ### 减小KV cache的方法
 业界针对KV Cache的优化，衍生出很多方法，主要有四类：
