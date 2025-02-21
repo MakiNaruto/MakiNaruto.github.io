@@ -11,6 +11,25 @@ tags :
 header_img : content_img/NLP/WestWorld.jpg
 
 ---
+
+背景: 当输入序列（sequence length）较长时，Transformer的计算过程缓慢且耗费内存，这是因为self-attention的time和memory complexity会随着sequence length的增加成二次增长。
+
+## FlashAttention
+
+标准Attention的中间结果, 通常需要通过高带宽内存（HBM）进行存取. FlashAttention通过“split attention”的方式, 优化计算减少内存的存取操作, 减少了内存带宽的消耗，并且采用了高效的GPU实现，极大地提高了效率.
+使得FlashAttention计算速度比传统Attention的速度快。
+
+
+标准实现如何显示对HW操作方式不大尊重。它基本上将HBM加载/存储操作视为0成本(它不是“io感知”)。首先考虑如何使这个实现更有效(时间和内存方面)。最简单的方法是删除冗余的HBM读/写。如下图所示. 
+![](/content_img/NLP/LLM_Learning/Attention/MemoryOperator.jpg)
+
+
+https://zhuanlan.zhihu.com/p/651280772
+
+https://zhuanlan.zhihu.com/p/17826661883
+
+
+
 ## KV-cache
 由于基于Transformer的LLM参数量都很大, 占用显存很大, 所以优化显存自然成了主要目的.
 复习一下[MHA公式]({{% relref "/posts/NLP/LLM_Learning/Transformer.md/#2--multi-head-attention" %}}), 在推理时, 发现每个计算出的KQV前序列是一样的, 为了避免重复计算, 提出把前序计算好的缓存起来，使用的时候, 直接取就好. 这也就是目前主流的KV-cache的机制.

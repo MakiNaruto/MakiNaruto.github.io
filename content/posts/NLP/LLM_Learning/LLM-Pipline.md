@@ -157,8 +157,7 @@ def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
 ```python
 loss = -torch.nn.functional.logsigmoid(rewards_chosen - rewards_rejected).mean()
 ```
-可以看到损失函数是-logsigmoid(A, B), 这个损失函数的本质是, 使模型能尽可能地将 rewards_chosen 的值预测得比 rewards_rejected 大。<br>
-根据公式, 当模型正确地选择了 input_ids_chosen，即 rewards_chosen 比 rewards_rejected 越大时，损失函数的值越趋近于0, 模型会得到正反馈。<br>
+可以看到损失函数是-logsigmoid(A - B), 这个损失函数的本质是, 使模型能尽可能地将 rewards_chosen(A) 的值预测得比 rewards_rejected(B) 大。这样, Loss会逐渐越趋近于0。<br>
 
 $$\text{LogSigmoid}(x) = \log\left(\frac{ 1 }{ 1 + \exp(-x)}\right)$$
 <img src="/content_img/NLP/LLM_Learning/LLM-Pipline/log_sigmoid.png" width="50%" title="log_sigmoid">
@@ -227,7 +226,7 @@ $$\mathcal{L}_{\mathrm{DPO}}\left(\pi_\theta ; \pi_{\mathrm{ref}}\right)=-\mathb
 可以看到dpo_loss计算时, 可以采用不同的loss计算方式, 默认损失计算方式为sigmoid.
 
 #### 代码片段
-只列出了最核心的部分, 具体细节可以看源码: https://github.com/huggingface/trl/blob/main/trl/trainer/dpo_trainer.py#L1344 
+只列出了最核心的部分, 具体细节可以看源码: https://github.com/huggingface/trl/blob/v0.9.4/trl/trainer/dpo_trainer.py#L1174 
 ```python
 def concatenated_forward(self, model, batch):
     """
@@ -241,21 +240,28 @@ def get_batch_loss_metrics( self, model, batch):
     """Compute the DPO loss and other metrics for the given batch of inputs for train or test."""
     metrics = {}
     (
-        policy_chosen_logps,    # 模型预测的"选择"动作的对数概率
-        policy_rejected_logps,  # 模型预测的"拒绝"动作的对数概率
-        policy_chosen_logits,   # 模型预测的"选择"动作的logits
-        policy_rejected_logits, # 模型预测的"拒绝"动作的logits
+        policy_chosen_logps,        # 模型预测的"选择"动作的对数概率
+        policy_rejected_logps,      # 模型预测的"拒绝"动作的对数概率
+        policy_chosen_logits,       # 模型预测的"选择"动作的logits
+        policy_rejected_logits,     # 模型预测的"拒绝"动作的logits
+        policy_chosen_logps_avg,    # 模型预测的"选择"动作的对数概率均值
     ) = self.concatenated_forward(model, batch)
 
     # 获取参考模型的预测结果
     # 1. 如果批次数据中包含参考模型的预测结果，则直接使用
-    if "reference_chosen_logps" in batch and "reference_rejected_logps" in batch:
+    if (
+        "reference_chosen_logps" in batch
+        and "reference_rejected_logps" in batch
+        and self.args.rpo_alpha is not None
+    ):
         reference_chosen_logps = batch["reference_chosen_logps"]
         reference_rejected_logps = batch["reference_rejected_logps"]
-    # 2. 否则，使用当前类的参考模型进行预测
-    #   2.1 没有参考模型
-    #   2.2 使用参考模型进行预测
-    (reference_chosen_logps, reference_rejected_logps, _,  _,) = self.concatenated_forward(self.ref_model, batch)
+    else:
+        # 2. 否则
+        #   2.1 没有参考模型, 则使用加载的模型
+        (reference_chosen_logps, reference_rejected_logps, _,  _, _,) = self.concatenated_forward(self.model, batch)
+        #   2.2 使用参考模型进行预测
+        (reference_chosen_logps, reference_rejected_logps, _,  _, _,) = self.concatenated_forward(self.ref_model, batch)
 
     # 计算DPO损失和其他指标
     losses, chosen_rewards, rejected_rewards = self.dpo_loss(
@@ -264,17 +270,11 @@ def get_batch_loss_metrics( self, model, batch):
         reference_chosen_logps,
         reference_rejected_logps,
     )
-    # dpo_loss函数计算DPO损失，并返回奖励值
-    reward_accuracies = (chosen_rewards > rejected_rewards).float()
-    # 计算奖励准确率，即选择动作的奖励是否大于拒绝动作的奖励
+
+    # 损失的
     if self.args.rpo_alpha is not None:
-        losses = losses + self.args.rpo_alpha * model_output["nll_loss"]  # RPO loss from V3 of the paper
+        losses = losses * self.args.rpo_alpha - policy_chosen_logps_avg
 
-    if self.use_weighting:
-        losses = losses * model_output["policy_weights"]
-
-    if self.aux_loss_enabled:
-        losses = losses + self.aux_loss_coef * model_output["aux_loss"]
     # 计算并存储各种指标
     metrics[...] = ...
     ...
@@ -314,7 +314,13 @@ Critic/Reward/Reference Model共同组成了一个“奖励-loss”计算体系�
 同样的, RL训练器使用 [trl.PPOTrainer](https://huggingface.co/docs/trl/main/en/ppo_trainer#ppo-trainer).<br>
 待续... 先mark一下, 学明白了后更新.<br>
 ### 数据
-...
+```json
+{
+    "query": ["<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n\n<|im_start|>user\n\n在这个任务中，你将.....,E 事情 \n答案："], 
+    "input_ids": [[[151644,   8948,    198,   2610,    525,    264,  10950,  17847, ..., 104384,   1773, 151645]]]
+}
+
+```
 
 ### Loss
 具体代码实现: https://github.com/huggingface/trl/blob/main/trl/trainer/ppo_trainer.py#L500

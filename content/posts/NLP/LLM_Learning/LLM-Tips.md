@@ -20,9 +20,7 @@ header_img : content_img/NLP/WestWorld.jpg
 </div>
 
 <div style="display: flex; justify-content: space-between;">
-<img src="https://pytorch.org/docs/stable/_images/Sigmoid.png" width="30%" title="Sigmoid">
-<img src="https://pytorch.org/docs/stable/_images/Tanh.png" width="30%" title="Tanh">
-<img src="https://pytorch.org/docs/stable/_images/ReLU.png" width="30%" title="ReLU">
+<img src="https://pytorch.org/docs/stable/_images/Hardswish.png" width="30%" title="Hardswish">
 </div>
 
 <b>其他激活函数: </b>[non-linear-activations](https://pytorch.org/docs/stable/nn.html#non-linear-activations-weighted-sum-nonlinearity)
