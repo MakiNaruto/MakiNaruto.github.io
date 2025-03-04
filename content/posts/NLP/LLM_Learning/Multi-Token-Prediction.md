@@ -31,7 +31,7 @@ MTP实现图如图所示
 
 
 #### 训练
-可以看到, MTP模块是传递式的, 即每一个进入到Output Head 层的隐层输出都会到下一个MTP作为输入.
+可以看到, MTP模块是依次向后计算的, 即每一个进入到Output Head 层的隐层输出都会到下一个MTP作为输入.
 因此, 对于从i到k的输入序列, ${h}_i^{\prime k}$作为输入, 在MTP的后续计算中, 得到对应的第k个token, 其预测公式为:
 
 $$P_{i+k+1}^k=\operatorname{OutHead}\left(\mathbf{h}_i^k\right) .$$
@@ -56,6 +56,7 @@ $$\mathcal{L}_{\mathrm{MTP}}^k = \frac{\lambda }{D}\sum_{k=1}^{D}\mathcal{L}_{\m
 
 #### 预测
 - 传统模式: 当抛弃所有的MTP模块时, 可以当成正常的模型, 即传统LLM输出一个token的模式.
-- 多token模式: 
-    - 1. 一次连续预测D个token. 第一个token由主模型预测, 剩下的由MTP模块预测. 
-    - 2. 加速token输出速度. 由于一次计算时, MTP模块比主模型的参数量小了很多. 从图中看仅有一层TRM, 而主模型为堆叠的TRM层, 为TRM * L, 因此, 每次连续的D个token预测, 计算量可以看成减少了TRM * (L - 1) * D. 
+- 多token模式:
+  1. 一次连续预测D个token. 第一个token由主模型预测, 剩下的由MTP模块预测. 
+  2. 加速token输出速度. 由于一次计算时, MTP模块比主模型的参数量小了很多. 从图中看仅有一层TRM, 而主模型为堆叠的TRM层, 为TRM * L, 因此, 每次连续的D个token预测, 计算量可以看成减少了TRM * (L - 1) * D.
+

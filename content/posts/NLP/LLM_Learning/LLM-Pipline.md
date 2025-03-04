@@ -291,7 +291,7 @@ def dpo_loss(self, policy_chosen_logps, policy_rejected_logps, reference_chosen_
 ## PPO(Proximal Policy Optimization)
 
 PPO 是一种基于策略梯度的强化学习算法，旨在通过限制更新步长来减少策略更新时的变化过大，从而提高稳定性。它通过"裁剪"目标函数来避免策略更新过快（从而导致训练的不稳定）。其在LLM训练的主要流程如图所示.
-![PPO](/content_img/NLP/LLM_Learning/LLM-Pipline/pipline.png)
+![PPO](/content_img/NLP/LLM_Learning/LLM-Pipline/ppo_rlhf.jpg)
 
 如上图，在RLHF-PPO阶段，一共有四个主要模型，分别是：
 
