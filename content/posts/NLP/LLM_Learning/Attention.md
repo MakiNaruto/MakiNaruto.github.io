@@ -15,12 +15,29 @@ header_img : content_img/NLP/WestWorld.jpg
 背景: 当输入序列（sequence length）较长时，Transformer的计算过程缓慢且耗费内存，这是因为self-attention的<b>计算时间</b>和<b>内存存取复杂度</b>会随着<b>输入序列</b>的增加成二次增长。因此业界提出了几种加速方案.
 
 ## FlashAttention
+Attention标准实现没有考虑到对内存频繁的IO操作, 它基本上将HBM加载/存储操作视为0成本。因此FlashAttention的优化方案是通过“split attention”的方式, 将多个操作融合在一起, 只从HBM加载一次，然后将结果写回来。减少了内存带宽的通信开销，并且采用了高效的GPU实现, 极大地提高了效率。<br>
+核心：用分块softmax等价替代传统softmax。<br>
+优点：节约HBM，高效利用SRAM，省显存，提速度。<br>
 
-Attention标准实现没有考虑到对内存频繁的IO操作, 它基本上将HBM加载/存储操作视为0成本。因此FlashAttention的优化方案是通过“split attention”的方式, 将多个操作融合在一起, 只从HBM加载一次，然后将结果写回来。减少了内存带宽的通信开销，并且采用了高效的GPU实现, 极大地提高了效率.。 
 ![FlashAttention对内存读写的改进](/content_img/NLP/LLM_Learning/Attention/MemoryOperator.jpg)
+查看详细计算过程: [知乎: FlashAttention算法详解](https://zhuanlan.zhihu.com/p/651280772)
 
+### 相关内容补充
+内存不是一个单一的工件，它在本质上是分层的，一般的规则是:内存越快，越昂贵，容量越小。因此和木桶原理类似, 需要考虑到每个模块的瓶颈。 
+![内存速率图](/content_img/NLP/LLM_Learning/Attention/Memory.jpg)
+RAM主要分为两类：
+- 静态随机存取存储器（Static Random-Access Memory，SRAM）
+  - SRAM以其高速访问特性被广泛应用于缓存等场景
+- 动态随机存取存储器（Dynamic Random Access Memory，DRAM）
+  - DRAM则因其较高的存储密度和成本效益被广泛用作主内存。
+  - 同步动态随机存取内存（synchronous dynamic random-access memory，SDRAM）
+    - 同步动态随机存取存储器（SDRAM）：随着处理器速度的提升，为了减少内存与CPU之间的速度差异，SDRAM被引入，它允许在单个时钟周期内完成数据的读写。
+  - 双倍速率 SDRAM（Double Data Rate SDRAM, DDR SDRAM）
+    - DDR SDRAM通过在时钟的上升沿和下降沿都能进行数据传输，实现了数据传输速率的翻倍。
 
-[知乎: FlashAttention算法详解](https://zhuanlan.zhihu.com/p/651280772)
+HBM高带宽存储器（High Bandwidth Memory，HBM）<br>
+HBM是一种创新的3D堆叠DRAM技术，由AMD和SK海力士联合开发。它通过将多层DRAM芯片垂直堆叠，并使用高带宽的串行接口与GPU或CPU直接相连，从而提供了远超传统DRAM的带宽和容量。
+
 
 ## 共享KV 
 多个Head共享使用1组KV，将原来每个Head一个KV，变成1组Head一个KV，来压缩KV的存储。代表方法：GQA，MQA等
