@@ -37,7 +37,8 @@ Attention标准实现没有考虑到对内存频繁的IO操作, 它基本上将H
 ## 量化压缩
 基于量化的方法，通过更低的Bit位来保存KV，将单KV结果进一步压缩，代表方法：INT8等
 
-
+## Page Attention
+https://zhuanlan.zhihu.com/p/9632325957
 
 ## 参考地址
 [[1] deepseek-v2](deepseek-v2:https://arxiv.org/pdf/2405.04434)<br>
