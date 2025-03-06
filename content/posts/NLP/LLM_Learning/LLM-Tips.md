@@ -10,6 +10,54 @@ tags :
 header_img : content_img/NLP/WestWorld.jpg
 
 ---
+
+## 模型参数量的计算
+### 数据精度
+要计算参数量, 我们首先要知道, 在计算机表示中, 对于数据的表示精度范围不同, 意味着该数据表示形式可能占用的内存空间也不同.<br>
+浮点数在计算机中的存储分为三个部分：<br>
+　1. 符号位（sign）：float和double符号位均为1位，0代表正数，1代表负数<br>
+　2. 指数位（exponent）：存储科学计数法中的指数部分，采用移位存储<br>
+　3. 尾数位（fraction）：存储科学计数法中的尾数部分<br>
+![](/content_img/NLP/LLM_Learning/LLM-Tips/data_precision_struct.jpg)
+
+计算方式:<br>
+$$(-1)^{符号位} \times 2^{指数位 - 指数偏移} \times (1 + \frac{尾数位}{1024}) $$
+
+例如fp16, 举例说明: <br>
+　Exponent(指数位)：5 <br>
+　　表示范围 00001(1)到11110(30) <br>
+　　为了能表示负数，减去偏置（15），指数部分（-14 - 15 ）<br>
+  Fraction 位数位：10 <br>
+　　共10位 <br>
+　　表示范围 0000000000 - 1111111111（ 0~1023） <br>
+　　除以1024（0 - 1023）/1024 <br>
+
+可以表示的最大数据(符号位=1，指数位=30，尾数位=1）：  <br>
+$(-1)^{0} \times 2^{30 - 15} \times (1 + \frac{1023}{1024}) $ <br>
+可以表示的最小数据(符号位=-1，指数位=30，尾数位=1）： <br>
+$(-1)^{1} \times 2^{30 - 15} \times (1 + \frac{1023}{1024}) $ <br>
+
+常用数据精度
+
+|  简称  |                     全称                      |  符号位  | 指数位 | 小数位 | 总位数 | 字节数 |                表示范围                 |
+|:----:|:-------------------------------------------:|:-----:|:---:|:---:|:---:|:---:|:-----------------------------------:|
+| fp32 | 单精度浮点数<br>（Single-precision floating-point） |   1   |  8  | 23  | 32  |  4  |  $[-3.4 × 10^{38}, 3.4 × 10^{38}]$  |
+| fp16 |    半精度浮点数<br>（Half-precision floating-point）    |   1   |  5  | 10  | 16  |  2  |          $[-65504, 65504]$          |
+| bf16 |       Brain 浮点数<br>（Brain floating-point）       |   1   |  8  |  7  | 16  |  2  | $[-3.39 × 10^{38}, 3.39 × 10^{38}]$ |
+
+### 计算
+比如一个14B的模型, 其中所有的数据精度都为fp16(16位, 2byte).
+那么加载模型时, 先进行单位换算, 
+1 byte = 8 bits<br>
+1 KB = 1,024 bytes<br>
+1 MB = 1,024 KB<br>
+1 GB = 1,024 MB<br>
+
+因为每个数据精度都为fp16, 占2字节, 所以需要先乘以2. 计算公式为: <br>
+1,400,000,000 * 2 / 1024 / 1024 / 1024 ≈ 1,400,000,000 * 2 / $10^{9}$ ≈ 28G
+
+由此, 以B为单位的模型, 可以直接进行粗略计算, 使用 字节数 * 前面的数字, 计算单位为G. 比如一个 14B 的大模型, 以fp16方式加载后, 预计推理需要的显存大小为: 14 * 2 = 28G 
+
 ## Loss图像
 常见激活函数的图像:
 
@@ -24,7 +72,6 @@ header_img : content_img/NLP/WestWorld.jpg
 </div>
 
 <b>其他激活函数: </b>[non-linear-activations](https://pytorch.org/docs/stable/nn.html#non-linear-activations-weighted-sum-nonlinearity)
-
 
 ## LoRA
 ### LoRA加速原理
@@ -44,7 +91,7 @@ W' = W + ΔW<br>
 LoRA只操作模型的线性层, 并且一般不会对lm_head进行参数的更新.
 
 训练期间和训练后的 LoRA 示意图:
-![](/content_img/NLP/LLM_Learning/LLM-Pipline/lora.png)
+![](/content_img/NLP/LLM_Learning/LLM-Tips/lora.png)
 
 
 [将 LoRA 权重合并到基础模型中](https://huggingface.co/docs/peft/main/en/conceptual_guides/lora) 
@@ -72,4 +119,4 @@ mask = torch.tensor([[1, 1, 0], [1, 0, 0], [1, 1, 1], [0, 0, 0], [1, 0, 1]])
 ```
 
 当我们将一些信息选为不关注时, 对信息的关注也是不同的, 如下图所示:
-![](/content_img/NLP/LLM_Learning/LLM-Pipline/attention_mask.png)
+![](/content_img/NLP/LLM_Learning/LLM-Tips/attention_mask.png)
