@@ -290,17 +290,30 @@ def dpo_loss(self, policy_chosen_logps, policy_rejected_logps, reference_chosen_
 
 ## PPO(Proximal Policy Optimization)
 
-PPO 是一种基于策略梯度的强化学习算法，旨在通过限制更新步长来减少策略更新时的变化过大，从而提高稳定性。它通过"裁剪"目标函数来避免策略更新过快（从而导致训练的不稳定）。其在LLM训练的主要流程如图所示.
-![PPO](/content_img/NLP/LLM_Learning/LLM-Pipline/ppo_rlhf.jpg)
+PPO 是一种基于策略梯度的强化学习算法，旨在通过限制更新步长来减少策略更新时的变化过大，从而提高稳定性。它通过"裁剪"目标函数来避免策略更新过快（从而导致训练的不稳定）。
+
+### PPO的工作
+1. 推出：语言模型根据查询生成响应。
+2. 评估：使用函数、模型、人工反馈或它们的某种组合来评估查询和响应。此过程应为每个查询/响应对生成一个标量值。
+3. 优化：在优化步骤中，查询/响应对用于计算序列中标记的对数概率。这是通过训练后的模型和参考模型完成的。两个输出之间的 KL 散度用作额外的奖励信号，以确保生成的响应不会偏离参考语言模型太远。然后使用 PPO 训练主动语言模型。
+![PPO](/content_img/NLP/LLM_Learning/LLM-Pipline/PPO1.png)
+![PPO](/content_img/NLP/LLM_Learning/LLM-Pipline/PPO2.png)
 
 如上图，在RLHF-PPO阶段，一共有四个主要模型，分别是：
-
-<b>Actor Model</b>：更新权重, SFT Model，这就是我们想要训练的目标语言模型<br>
-<b>Critic Model</b>：更新权重, Reward Model(从RM初始化而来)，它的作用是预估总收益<br>
-<b>Reward Model</b>：不更新权重, Reward Model，它的作用是计算即时收益<br>
-<b>Reference Model</b>：不更新权重, SFT Model(KL散度接近)，它的作用是在RLHF阶段给语言模型增加一些“约束”，防止语言模型训歪（朝不受控制的方向更新，效果可能越来越差）
+- <b>演员模型 Actor Model(红色)</b>：更新权重, SFT Model，数来源于RLHF过程中的第⼀步提前准备好的监督微调模型。该模型不仅参与训练，也是PPO过程中需要进⾏对齐的语⾔模型，它是我们强化学习训练的主要⽬标和最终输出。该模型被训练⽤来对齐⼈类偏好的模型，也被称为“策略模型”（policymodel）<br>
+- <b>评论家模型 Critic Model(绿色)</b>：更新权重, Reward Model(从RM初始化而来)，数来源于先前训练好的奖励模型。模型参数参与反向传播，⽤来预测⽣成回复的未来累积奖励<br>
+- <b>参考模型 Reward Model(黄色)</b>：不更新权重, Reward Model，参数来源于RLHF过程中的第⼀步提前训练好的奖励模型。它的主要功能是输出奖励分数来评估回复质量的好坏<br>
+- <b>奖励模型 Reference Model(蓝色)</b>：不更新权重, SFT Model，它的作用是在训练过程中, 防止Actor训歪（朝不受控制的方向更新，效果可能越来越差）, 通过KL散度, 衡量两个模型的输出分布尽可能的相似.
 
 Critic/Reward/Reference Model共同组成了一个“奖励-loss”计算体系，综合它们的结果计算loss，用于更新Actor和Critic Model
+
+### 第一个阶段，经验采样
+　actor: 根据prompt数据集生成repsonse, 对于response中每一个token对应的log_prob记为log_probs。<br>
+　reference: actor生成的 prompt+response 作为输入, 记录 prompt+response 的每个token的log_prob，记为ref_log_probs。<br>
+　critic: reward模型根据prompt+response输出values和reward。<br>
+
+KL散度公式
+$$ D_{KL}(P||Q) = \sum_{i} P(i) \log \frac{P(i)}{Q(i)} $$
 
 优点：
 1. 稳定性：PPO 通过对目标函数进行裁剪，避免了策略的过大更新，减少了训练过程中的不稳定性。
@@ -312,7 +325,7 @@ Critic/Reward/Reference Model共同组成了一个“奖励-loss”计算体系�
 2. 计算资源要求：尽管相比其他方法更为高效，但在处理大型问题时，仍然需要较为充足的计算资源。
 
 同样的, RL训练器使用 [trl.PPOTrainer](https://huggingface.co/docs/trl/main/en/ppo_trainer#ppo-trainer).<br>
-待续... 先mark一下, 学明白了后更新.<br>
+
 ### 数据
 ```json
 {
@@ -329,21 +342,12 @@ Critic/Reward/Reference Model共同组成了一个“奖励-loss”计算体系�
 
 [图解大模型RLHF系列之：人人都能看懂的PPO原理与源码解读](https://zhuanlan.zhihu.com/p/677607581)<br>
 [PPO理论推导+代码实战](https://zhuanlan.zhihu.com/p/13467768873)<br>
-
+[OpenRLHF源码解析一PPO](https://zhuanlan.zhihu.com/p/19673307383)<br>
+[从0到1构建RLHF系统——小红书大模型团队的探索与实践](https://mp.weixin.qq.com/s/tG_ktQ0WbZHQavtoJtaXbw)
+[Reinforcement Learning From Human Feedback](https://newfacade.github.io/notes-on-reinforcement-learning/17-ppo-trl.html)
 
 [//]: # ($$L^{C L I P}&#40;\theta&#41;=\hat{\mathbb{E}}_t\left[\min \left&#40;r_t&#40;\theta&#41; \hat{A}_t, \operatorname{clip}\left&#40;r_t&#40;\theta&#41;, 1-\epsilon, 1+\epsilon\right&#41; \hat{A}_t\right&#41;\right]$$)
 
-
-## RLHF
-### NLP任务中的智能体、状态、动作与RL的对应
-当一个问题输入时, 产生了一变化.
-1. 输出token - [$A_{t}$]: 模型根据上文，在$t$时刻产出一个token，这个token预测即对应着强化学习中的动作。<br>
-2. 输出token的收益 - [$R_{t}$],$V_{t}$: 在$t$时刻，模型产出的token的当前收益$R_{t}$: 
-3. 输出完整一句话的收益 - [$V_{t}$]: 在$t$时刻，模型产出的token的综合收益$V_{t}$<br>
-4. 上述过程完毕后, 模型的状态从 $S_{t}$, 变为$S_{t+1}$，输入问题从"A"变成 -  "A + 新产出的token"<br>
-
-
-[//]: # (![DPO-RLHF]&#40;https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/rlhf/rlhf.png&#41;)
 
 ### 参考文章
 https://huggingface.co/blog/zh/rlhf

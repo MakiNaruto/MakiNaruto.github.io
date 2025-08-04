@@ -3,3 +3,5 @@
 /resources/*
 hugo.toml
 .hugo_build.lock
+.DS_Store
+.idea/*

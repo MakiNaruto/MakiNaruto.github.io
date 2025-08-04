@@ -12,15 +12,34 @@ header_img : content_img/NLP/WestWorld.jpg
 
 ---
 
-背景: 当输入序列（sequence length）较长时，Transformer的计算过程缓慢且耗费内存，这是因为self-attention的<b>计算时间</b>和<b>内存存取复杂度</b>会随着<b>输入序列</b>的增加成二次增长。因此业界提出了几种加速方案.
+背景:
+当输入序列（sequence length）较长时, Transformer的计算过程缓慢且耗费内存，即计算的矩阵会变得很大, 这是因为self-attention的<b>计算时间</b>和<b>内存存取复杂度</b>会随着<b>输入序列</b>的增加成二次增长。因此业界提出了几种加速方案.
 
 ## FlashAttention
 Attention标准实现没有考虑到对内存频繁的IO操作, 它基本上将HBM加载/存储操作视为0成本。因此FlashAttention的优化方案是通过“split attention”的方式, 将多个操作融合在一起, 只从HBM加载一次，然后将结果写回来。减少了内存带宽的通信开销，并且采用了高效的GPU实现, 极大地提高了效率。<br>
 核心：用分块softmax等价替代传统softmax。<br>
 优点：节约HBM，高效利用SRAM，省显存，提速度。<br>
 
+
+### 传统分块计算过程
+例如原本的$QK^{T}$一次计算过程进行拆分, 分别将$Q$和$K^{T}$划分为为$m$,和$n$个小块, 然后依次将$m_{i}$和$n_{i}$小块计算的结果放置到指定的区域. 当然, 这样操作会带来额外的通讯次数的开销, 变成m * n, 但对于存储架构来说, SRAM与HBM的通信速率是非常快的, 在这里的通讯次数开销是可以接受的.
+![传统分块计算过程](/content_img/NLP/LLM_Learning/Attention/flash_att_cal1.jpg)
+
+通信过程, 整个过程需要6次通信, 3次写入到SRAM, 3次到HBM中.
+1. 将矩阵 Q 和K从 HBM 分块加载到 SRAM 中
+2. 逐块计算 $S_{ij}  = Q_{i}K_{j}^{T}$, 并将每个子矩阵计算得出的 $S_{ij}$ 从SRAM 写入HBM。
+3. 从 HBM 中加载所需的子矩阵  $S_{ij}$ 到 SRAM 中，为后续 softmax计算做准备。
+4. 对每个子矩阵  $S_{ij}$ 计算 softmax，得到$P_{ij}= softmax( S_{ij})$，并将每个子矩阵 $P_{ij}$从 SRAM 写入 HBM。
+5. 将矩阵 P和V从 HBM 分块加载到 SRAM 中。
+6. 将P和V分成较小的块，逐块计算 $O_{ij} =P_{i}V_{j}$，并将每个子矩阵 $O_{ij}$ 从 SRAM 写入 HBM.
+
+### FlashAttention的改进
+FlashAttention改进了计算过程, 所有计算过程统一在SRAM中计算, 将最终的计算结果返回给HBM, 只进行一次读写. 其过程如下.
 ![FlashAttention对内存读写的改进](/content_img/NLP/LLM_Learning/Attention/MemoryOperator.jpg)
-查看详细计算过程: [知乎: FlashAttention算法详解](https://zhuanlan.zhihu.com/p/651280772)
+
+#### safe-softmax分块计算过程
+
+查看详细计算过程: [小红书: 图解Flash Attention核心原理](https://www.xiaohongshu.com/explore/67d4e91e000000000901720a?xsec_token=ABxaNRZEX3g8l0A3SUDzsd3sxufbg_wFT3Atk1szS-c4s=&xsec_source=pc_collect)
 
 ### 相关内容补充
 内存不是一个单一的工件，它在本质上是分层的，一般的规则是:内存越快，越昂贵，容量越小。因此和木桶原理类似, 需要考虑到每个模块的瓶颈。 
