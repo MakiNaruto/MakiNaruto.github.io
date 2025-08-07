@@ -329,26 +329,66 @@ $$ D_{KL}(P||Q) = \sum_{i} P(i) \log \frac{P(i)}{Q(i)} $$
 ### 数据
 ```json
 {
-    "query": ["<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n\n<|im_start|>user\n\n在这个任务中，你将.....,E 事情 \n答案："], 
-    "input_ids": [[[151644,   8948,    198,   2610,    525,    264,  10950,  17847, ..., 104384,   1773, 151645]]]
+  "prompt": "Explain the theory of relativity.",
+  "response": "The theory of relativity was developed by Einstein...",
+  "reward": 0.78  // 模型、规则、人工打分
 }
-
 ```
 
 ### Loss
 具体代码实现: https://github.com/huggingface/trl/blob/main/trl/trainer/ppo_trainer.py#L500
 
-### 推荐阅读文章
 
-[图解大模型RLHF系列之：人人都能看懂的PPO原理与源码解读](https://zhuanlan.zhihu.com/p/677607581)<br>
-[PPO理论推导+代码实战](https://zhuanlan.zhihu.com/p/13467768873)<br>
-[OpenRLHF源码解析一PPO](https://zhuanlan.zhihu.com/p/19673307383)<br>
-[从0到1构建RLHF系统——小红书大模型团队的探索与实践](https://mp.weixin.qq.com/s/tG_ktQ0WbZHQavtoJtaXbw)
-[Reinforcement Learning From Human Feedback](https://newfacade.github.io/notes-on-reinforcement-learning/17-ppo-trl.html)
+## GRPO（Generalized Reward Policy Optimization）
+出自论文: [DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models](https://arxiv.org/pdf/2402.03300)
 
-[//]: # ($$L^{C L I P}&#40;\theta&#41;=\hat{\mathbb{E}}_t\left[\min \left&#40;r_t&#40;\theta&#41; \hat{A}_t, \operatorname{clip}\left&#40;r_t&#40;\theta&#41;, 1-\epsilon, 1+\epsilon\right&#41; \hat{A}_t\right&#41;\right]$$)
+GRPO优化过程中, 和PPO类似, 需要三个模型: 
+Policy_model(优化模型), reference_model, reward_model.
 
+![GRPO](/content_img/NLP/LLM_Learning/LLM-Pipline/GRPO.png)
+
+其中, 奖励的分值可以由规则来替代, 比如最后的答案为目标答案则给2分. 因此规则简单的情况下可以使用 reward_funcs 代替 reward_model.
+若不担心模型训歪, reference_model也可以不使用, 因此最小仅需一个模型就可以使GRPO训练起来[代码](https://github.com/huggingface/trl/blob/v0.21.0/trl/trainer/grpo_trainer.py#L430).
+
+GRPO相对于PPO, 主要思路是：<b>丢掉 KL 散度项 和 Value Model，改为同一个问题进行多个回答</b> 
+具体流程大致为, 使用策略模型根据同一个prompt, 生成多个回答, 然后对所有回答进行 “group 内排名 + z-score 归一化”, 作为奖励信号.
+```markdown
+比如某个 prompt，我们生成了 4 个回答，reward model 给出分数是：
+[1.2, 0.7, 1.5, 0.9]
+
+计算标准化后的 z-score：
+mean = 1.075, std = 0.3 => z-scores = [0.42, -1.25, 1.42, -0.58]
+
+这些 z-score 就作为最终的 advantage 信号用于训练。
+
+```
+
+### 数据
+GRPO的数据流大致如下.
+```json
+{
+  "prompt": "Explain the theory of relativity.",
+  "responses": [
+    "Relativity explains gravity as curvature of spacetime...",
+    "It talks about time dilation and length contraction...",
+    "It is a theory by Einstein involving E=mc^2..."
+  ],
+  "rewards": [0.85, 0.62, 0.71]
+}
+```
+
+
+### DPO、PPO、GRPO 对比
+
+方法	| 特点 |                数据格式                 | 是否需要多个 response | 是否需要 reference model | 是否需要 reward model
+:--: | :--: |:-----------------------------------:| :--:| :--: | :--: 
+PPO	| 强调 reward 优化 |  单个 prompt + 单个 response + reward	  | ❌| ✅ 是|✅ 是
+DPO | 偏好对比优化 |   单个 prompt + (chosen, rejected)    | ❌| ✅ 是| ❌ 否
+GRPO | group 内排序优化 | 单个 prompt + 多个 response + 多个 reward | ✅| ✅ 是| ❌（可选）
 
 ### 参考文章
-https://huggingface.co/blog/zh/rlhf
+
+[图解大模型RLHF系列之：人人都能看懂的PPO原理与源码解读](https://zhuanlan.zhihu.com/p/677607581)<br>
+[OpenRLHF源码解析一PPO](https://zhuanlan.zhihu.com/p/19673307383)<br>
+[Reinforcement Learning From Human Feedback](https://newfacade.github.io/notes-on-reinforcement-learning/17-ppo-trl.html)
 
