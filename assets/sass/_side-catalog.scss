@@ -76,12 +76,20 @@
         max-width: 168px;
         display: inline-block;
         vertical-align: middle;
-        height: 30px;
-        line-height: 30px;
+        height: auto;
+        line-height: 1.35;
+        padding-top: 4px;
+        padding-bottom: 4px;
+        margin: 3px 0;
         overflow: hidden;
         text-decoration: none;
         white-space: nowrap;
         text-overflow: ellipsis;
+        &:focus,
+        &:active {
+          outline: none;
+          box-shadow: none;
+        }
       }
     }
     .h1_nav,
@@ -110,11 +118,14 @@
       }
     }
     .active {
+      background-color: transparent;
+      border-radius: 0;
       a {
         color: #0085a1 !important;
+        border: 0;
+        border-radius: 0;
+        padding-right: 0;
       }
-      border-radius: 4px;
-      background-color: #f5f5f5;
     }
   }
 }

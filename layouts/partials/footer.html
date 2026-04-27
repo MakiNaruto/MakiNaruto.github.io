@@ -142,8 +142,38 @@
     });
   }
 
+  function bindCatalogCenteredScroll(selector) {
+    $(selector).off('click.catalogCentered').on('click.catalogCentered', 'a', function (e) {
+      var $link = $(this);
+      var href = $link.attr('href') || '';
+      if (href.charAt(0) !== '#') {
+        return;
+      }
+
+      var $target = $(href);
+      if ($target.length === 0) {
+        return;
+      }
+
+      e.preventDefault();
+      e.stopImmediatePropagation();
+
+      var viewportHeight = $(window).height();
+      var targetTop = $target.offset().top;
+      var targetHeight = $target.outerHeight() || 0;
+      var scrollTop = targetTop - (viewportHeight / 2) + (targetHeight / 2);
+      var maxScrollTop = $(document).height() - viewportHeight;
+      scrollTop = Math.max(0, Math.min(scrollTop, maxScrollTop));
+
+      $('html, body').stop().animate({
+        scrollTop: scrollTop
+      }, 450);
+    });
+  }
+
   generateCatalog(".catalog-body");
   setupCatalogCollapsible(".catalog-body");
+  bindCatalogCenteredScroll(".catalog-body");
 
   // toggle side catalog
   $(".catalog-toggle").click((function (e) {
