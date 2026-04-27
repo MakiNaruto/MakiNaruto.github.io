@@ -67,23 +67,31 @@ $𝑙_{𝑛𝑒𝑤}=𝑙_{𝑜𝑙𝑑} ·𝑒^{(𝑚_{𝑜𝑙𝑑}−𝑚_{�
 ![online_softmax_example](image/Attention/online_softmax_example.png)
 
 
-## 共享KV 
+## 不同的Attention结构
 多个Head共享使用1组KV，将原来每个Head一个KV，变成1组Head一个KV，来压缩KV的存储。代表方法：GQA，MQA等
 ![MHA, MQA, GQA, MLA](/content_img/NLP/LLM_Learning/Attention/DeepSeekV2.png)
-1. <b>Multi-Head Attention</b>, 图1, 每一层的所有Head都独立拥有自己的KQV权重矩阵, 计算时各自使用自己的权重计算.
-2. <b>Multi-Query Attention</b>, 图2, 每一层的所有Head，按照数量分组, 一组的成员, 共享同一个KQV权重矩阵来计算Attention。因此, 分最多组就是MHA(图左), 最少就是MQA(图右).
-3. <b>Group-Query Attention</b>, 图3, 每一层的所有Head，都共享同一个KQV权重矩阵来计算Attention.
-4. <b>Multi-Head Latent Attention</b>, 图4, 每个Transformer层，只缓存了权重$c_{t}^{KV}$和$k_{t}^{R}$, 个人认为可以理解为缓存了两个分解的低秩矩阵.
+### <b>Multi-Head Attention</b>
+图1, 每一层的所有Head都独立拥有自己的KQV权重矩阵, 计算时各自使用自己的权重计算.
+### <b>Multi-Query Attention</b>
+图2, 每一层的所有Head，按照数量分组, 一组的成员, 在计算Attention时, KV权重矩阵是共享的, 只有Q权重矩阵是独立的. 
+
+例如每个Head中的Q权重矩阵是独立的, 但每组的Q权重共享一组KV权重矩阵, 这样就减少了KV的存储, 当然也会损失一定的性能. 比如原来MHA的Head有8个KQV权重矩阵,  现在进行分组后, 每两个Q权重矩阵共享一组KV权重矩阵, 则现在每个Head8个Q权重矩阵, 但只有4个KV权重矩阵, KV的存储就减少了一半. 
+### <b>Group-Query Attention</b>
+图3, 每个Head的Q权重矩阵是独立的, 但所有Head共享一组KV权重矩阵, 这样就进一步减少了KV的存储, 当然也会损失更多的性能. 比如原来MHA的Head有8个KQV权重矩阵, 现在进行分组后, 每个Head8个Q权重矩阵, 但只有1个KV权重矩阵, KV的存储就减少了7/8.
+
+### <b>Multi-Head Latent Attention</b>
+图4, 每个Transformer层，只缓存了权重$c_{t}^{KV}$和$k_{t}^{R}$, 个人认为可以理解为缓存了两个分解的低秩矩阵.
 ![MLA](/content_img/NLP/LLM_Learning/Attention/MLA-DeepSeek-V3.png)
 
-## 窗口KV
-针对长序列控制一个计算KV的窗口，KV cache只保存窗口内的结果（窗口长度远小于序列长度），超出窗口的KV会被丢弃，通过这种方法能减少KV的存储，当然也会损失一定的长文推理效果。代表方法：Longformer等
+⭐️推荐观看, 可视化讲解, https://www.bilibili.com/video/BV17QSpBDEHG
 
-## 量化压缩
-基于量化的方法，通过更低的Bit位来保存KV，将单KV结果进一步压缩，代表方法：INT8等
 
 ## Page Attention
-https://zhuanlan.zhihu.com/p/9632325957
+由于传统申请连续内存的方式在处理长序列时会导致内存碎片化和性能下降, Page Attention通过将内存划分为固定大小的页面（pages）, 并使用虚拟地址空间来管理这些页面的访问和存储, 这种机制允许模型在处理长序列时, 可以更灵活地管理内存资源, 从而提高计算效率和性能.
+
+具体来说, Page Attention通过将输入序列划分为多个页面（pages）, 每个页面可以独立地进行Attention计算, 并且通过虚拟地址空间来管理这些页面的访问和存储. 这样做不仅可以减少内存的使用, 还可以提高模型在处理长序列时的效率和性能.
+
+示例及详解 https://zhuanlan.zhihu.com/p/9632325957
 
 ## 参考地址
 [[1] deepseek-v2](deepseek-v2:https://arxiv.org/pdf/2405.04434)<br>
