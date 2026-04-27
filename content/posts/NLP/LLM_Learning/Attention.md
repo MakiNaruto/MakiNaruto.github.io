@@ -46,7 +46,7 @@ Attention标准实现没有考虑到对内存频繁的IO操作, 它基本上将H
 
 ### FlashAttention的改进
 FlashAttention改进了计算过程, 所有计算过程统一在SRAM中计算, 将最终的计算结果返回给HBM, 只进行一次读写. 其过程如下.
-![FlashAttention对内存读写的改进](/content_img/NLP/LLM_Learning/Attention/MemoryOperator.jpg)
+![FlashAttention对内存读写的改进](/content_img/NLP/LLM_Learning/Attention/MemoryOperator.jpg "50%")
 
 #### online-softmax 分块计算原理
 原本softmax 需要先计算出所有的$S_{ij}$, 然后再进行softmax计算, 但是FlashAttention的online-softmax算法, 通过分块计算的方式, 在每个块计算完之后就进行softmax计算, 并且在计算过程中维护一个全局的最大值和指数和, 来保证数值稳定性. 具体来说, 在每个块计算完之后, 会更新全局的最大值和指数和, 以便在下一个块计算时使用. 这样做不仅可以节约内存带宽，还可以提高计算效率.
@@ -57,19 +57,19 @@ $𝑚_{𝑛𝑒𝑤}=max⁡(𝑚_{𝑜𝑙𝑑}−𝑚_{c})$
 $𝑙_{𝑛𝑒𝑤}=𝑙_{𝑜𝑙𝑑} ·𝑒^{(𝑚_{𝑜𝑙𝑑}−𝑚_{𝑛𝑒𝑤} )}+𝑙_{c} ·𝑒^{(𝑚_{c}−𝑚_{𝑛𝑒𝑤} )}$
 
 其中:
-- 𝑚_{𝑐}: 当前块最大值
-- 𝑚_{𝑜𝑙𝑑}: 当前全局最大值
-- 𝑙_{𝑐}: 当前块局部指数和
-- 𝑙_{𝑜𝑙𝑑}: 当前全局分母 指数和
+- $𝑚_{𝑐}$: 当前块最大值
+- $𝑚_{𝑜𝑙𝑑}$: 当前全局最大值
+- $𝑙_{𝑐}$: 当前块局部指数和
+- $𝑙_{𝑜𝑙𝑑}$: 当前全局分母 指数和
 
 详细计算原理示例及讲解: [小红书: 图解Flash Attention核心原理](http://xhslink.com/o/7622DEwSF21 )
 
-![online_softmax_example](image/Attention/online_softmax_example.png)
+![online_softmax_example](/content_img/NLP/LLM_Learning/Attention/online_softmax_example.png "50%")
 
 
 ## 不同的Attention结构
 多个Head共享使用1组KV，将原来每个Head一个KV，变成1组Head一个KV，来压缩KV的存储。代表方法：GQA，MQA等
-![MHA, MQA, GQA, MLA](/content_img/NLP/LLM_Learning/Attention/DeepSeekV2.png)
+![MHA, MQA, GQA, MLA](/content_img/NLP/LLM_Learning/Attention/DeepSeekV2.png )
 ### <b>Multi-Head Attention</b>
 图1, 每一层的所有Head都独立拥有自己的KQV权重矩阵, 计算时各自使用自己的权重计算.
 ### <b>Multi-Query Attention</b>
@@ -79,9 +79,64 @@ $𝑙_{𝑛𝑒𝑤}=𝑙_{𝑜𝑙𝑑} ·𝑒^{(𝑚_{𝑜𝑙𝑑}−𝑚_{�
 ### <b>Group-Query Attention</b>
 图3, 每个Head的Q权重矩阵是独立的, 但所有Head共享一组KV权重矩阵, 这样就进一步减少了KV的存储, 当然也会损失更多的性能. 比如原来MHA的Head有8个KQV权重矩阵, 现在进行分组后, 每个Head8个Q权重矩阵, 但只有1个KV权重矩阵, KV的存储就减少了7/8.
 
+输入$X$在一个Head得到的矩阵为$Q, K, V$, 假设Head数量为4, 分组数量G为2,  现在我们得到的矩阵如下:
+| $Q$权重矩阵 | $K$权重矩阵 | $V$权重矩阵 |
+| --- | --- | --- |
+| $Q_1, Q_2, Q_3, Q_4$ | $K_1, K_1, K_2, K_2$ | $V_1, V_1, V_2, V_2$ |
+
+而实际在multi-head attention中, 多个head的 $Q$ 矩阵, 其得到可以由一次计算得出
+
+$Q=\left[Q_1, Q_2, Q_3, Q_4\right]=XW^{Q},  W^{Q} \in R^{d \times\left(d_k \times h\right)}$
+
+其中K的计算会稍微复杂一些, 因为每个Head的K权重矩阵是共享的, 但不同组的K权重矩阵又不共享, 因此需要先计算出每组的K矩阵, 然后再将其复制到对应的Head中. 其中:
+
+$$K_{\downarrow}=\left[K_1, K_2\right]=XW^{K},  W^{K} \in R^{d \times\left(d_k \times n\right)}$$
+
+因此$XW^{K}$权重矩阵的维度是$d \times\left(d_k \times n\right)$, 其中n是分组数量, 每组对应一个K权重矩阵. 然后将每组的K矩阵复制到对应的Head中, 得到最终的K矩阵为:
+
+$$
+K=\left[K_1, K_1, K_2, K_2\right]=\left[K_1, K_2\right]\left[\begin{array}{rrrr}
+I_{d_k} & I_{d_k} & 0 & 0 \\
+0 & 0 & I_{d_k} & I_{d_k}
+\end{array}\right]
+$$
+
+整个计算过程表达式可以表示为: 
+
+$$
+K=XW^{K} \left[\begin{array}{rrrr}
+I_{d_k} & I_{d_k} & 0 & 0 \\
+0 & 0 & I_{d_k} & I_{d_k}
+\end{array}\right]\\
+=XW^{K}_{\uparrow}
+$$
+
+$V$的计算过程和K一样, 整理一下, 我们现在得到了:
+
+$$K=XW^{K}_{\uparrow}, V=XW^{V}_{\uparrow}$$
+
+这部分也可以合并起来一次计算, 我们将KV其权重矩阵拼接得到:
+
+$$ XW^{KV} = [K_{\downarrow}, V_{\downarrow}] = \left[K_1, K_2, V_1, V_2\right] W^{KV} ,  W^{KV} \in R^{d \times\left(d_k n_g+d_v n_g\right)}$$
+
+
+同理, 再乘以一个拼接的复制矩阵, 得到最终的K和V矩阵:
+
+$$XW_{\uparrow}^{KV} = \left[K_1, K_2, V_1, V_2\right]\left[\begin{array}{rrrr}
+I_{d_k} & I_{d_k} & 0 & 0 \\
+0 & 0 & I_{d_k} & I_{d_k} \\
+I_{d_v} & I_{d_v} & 0 & 0 \\
+0 & 0 & I_{d_v} & I_{d_v} \\
+\end{array}\right]\\$$
+
 ### <b>Multi-Head Latent Attention</b>
-图4, 每个Transformer层，只缓存了权重$c_{t}^{KV}$和$k_{t}^{R}$, 个人认为可以理解为缓存了两个分解的低秩矩阵.
-![MLA](/content_img/NLP/LLM_Learning/Attention/MLA-DeepSeek-V3.png)
+MLA由GQA和GQA的基础上发展而来, 其核心思想是将每个Transformer层的KV权重矩阵分解成两个低秩矩阵, 其中一个矩阵是输入序列的线性变换, 另一个矩阵是一个小的可学习参数矩阵. 这样做的好处是可以大幅减少KV权重矩阵的存储需求, 同时保持较好的性能.
+
+$$ 令 C^{KV} = XW^{KV}$$
+
+通过分解得到 $C^{KV} = C^{K}C^{V}$, 其中$C^{K}$是输入序列的线性变换矩阵, $C^{V}$是一个小的可学习参数矩阵. 这样就将原来的KV权重矩阵分解成了两个低秩矩阵, 从而大幅减少了存储需求.
+
+![MLA](/content_img/NLP/LLM_Learning/Attention/MLA-DeepSeek-V3.png "70%")
 
 ⭐️推荐观看, 可视化讲解, https://www.bilibili.com/video/BV17QSpBDEHG
 

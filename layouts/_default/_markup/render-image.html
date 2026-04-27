@@ -1,8 +1,27 @@
-<figure>
+{{- $rawTitle := .Title | default "" -}}
+{{- $imageWidth := "" -}}
+{{- $caption := "" -}}
+
+{{- with $rawTitle -}}
+  {{- $matched := findRESubmatch `^\s*(\d{1,3}%)(?:\s*\|\s*(.*))?\s*$` . -}}
+  {{- if gt (len $matched) 0 -}}
+    {{- $imageWidth = index (index $matched 0) 1 -}}
+    {{- $caption = index (index $matched 0) 2 | default "" -}}
+  {{- else -}}
+    {{- $caption = . -}}
+  {{- end -}}
+{{- end -}}
+
+<figure{{ with $imageWidth }} style="width: {{ . }}; margin-left: auto; margin-right: auto;"{{ end }}>
   <a class="paragraph-image">
-    <img data-src="{{ .Destination | safeURL }}" data-action="zoom" alt="{{ .Text }}" {{ with .Title }} title="{{ . }}"{{ end }} class="lazyload">
+    <img
+      data-src="{{ .Destination | safeURL }}"
+      data-action="zoom"
+      alt="{{ .Text }}"
+      {{ with $caption }}title="{{ . }}"{{ end }}
+      class="lazyload">
   </a>
-  {{ with .Title }}
+  {{ with $caption }}
   <figcaption class="image-caption">
       {{- . | safeHTML -}}
   </figcaption>
