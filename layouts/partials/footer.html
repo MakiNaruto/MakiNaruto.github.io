@@ -60,7 +60,90 @@
     return true;
   }
 
+  function getCatalogLevel($item) {
+    var className = $item.attr('class') || '';
+    var match = className.match(/h([1-6])_nav/);
+    return match ? parseInt(match[1], 10) : 7;
+  }
+
+  function hasCollapsedAncestor($item) {
+    var itemLevel = getCatalogLevel($item);
+    var currentMinLevel = itemLevel;
+    var $prev = $item.prev();
+
+    while ($prev.length) {
+      var prevLevel = getCatalogLevel($prev);
+      if (prevLevel < currentMinLevel) {
+        if ($prev.hasClass('catalog-collapsed')) {
+          return true;
+        }
+        currentMinLevel = prevLevel;
+      }
+      $prev = $prev.prev();
+    }
+    return false;
+  }
+
+  function toggleCatalogChildren($item, shouldCollapse) {
+    var parentLevel = getCatalogLevel($item);
+    var $next = $item.next();
+
+    while ($next.length) {
+      var nextLevel = getCatalogLevel($next);
+      if (nextLevel <= parentLevel) {
+        break;
+      }
+
+      if (shouldCollapse) {
+        $next.addClass('catalog-child-hidden');
+      } else if (!hasCollapsedAncestor($next)) {
+        $next.removeClass('catalog-child-hidden');
+      }
+
+      $next = $next.next();
+    }
+  }
+
+  function setupCatalogCollapsible(selector) {
+    var $items = $(selector).children('li');
+
+    $items.each(function () {
+      var $item = $(this);
+      var currentLevel = getCatalogLevel($item);
+      var hasChildren = false;
+      var $next = $item.next();
+
+      while ($next.length) {
+        var nextLevel = getCatalogLevel($next);
+        if (nextLevel <= currentLevel) {
+          break;
+        }
+        hasChildren = true;
+        $next = $next.next();
+      }
+
+      if (hasChildren) {
+        $item.addClass('catalog-parent');
+        if ($item.children('.catalog-node-toggle').length === 0) {
+          $item.prepend('<button type="button" class="catalog-node-toggle" aria-label="Toggle subheadings" aria-expanded="true"></button>');
+        }
+      }
+    });
+
+    $(selector).off('click.catalogToggle').on('click.catalogToggle', '.catalog-node-toggle', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      var $item = $(this).closest('li');
+      var collapsed = !$item.hasClass('catalog-collapsed');
+      $item.toggleClass('catalog-collapsed', collapsed);
+      $(this).attr('aria-expanded', collapsed ? 'false' : 'true');
+      toggleCatalogChildren($item, collapsed);
+    });
+  }
+
   generateCatalog(".catalog-body");
+  setupCatalogCollapsible(".catalog-body");
 
   // toggle side catalog
   $(".catalog-toggle").click((function (e) {
