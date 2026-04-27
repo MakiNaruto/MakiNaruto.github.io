@@ -20,6 +20,17 @@ Attention标准实现没有考虑到对内存频繁的IO操作, 它基本上将H
 核心：用分块softmax等价替代传统softmax。<br>
 优点：节约HBM，高效利用SRAM，省显存，提速度。<br>
 
+### 相关内容补充
+内存不是一个单一的工件，它在本质上是分层的，一般的规则是:内存越快，越昂贵，容量越小。因此和木桶原理类似, 需要考虑到每个模块的瓶颈。 
+
+![内存速率图](/content_img/NLP/LLM_Learning/Attention/Memory.jpg)
+
+- SRAM（Static Random Access Memory）是一种高速缓存内存，通常用于CPU和GPU的缓存层。它具有较低的访问延迟和较高的带宽，但成本较高，容量较小。SRAM的访问速度非常快，适合频繁访问的数据存储和计算操作。<br>
+
+- HBM（High Bandwidth Memory）是一种高带宽的内存技术，通常用于GPU等高性能计算设备。它通过将多个DRAM芯片垂直堆叠，并使用高速接口与处理器直接连接，提供了极高的带宽和较大的容量。HBM适合存储大量数据，但访问速度相对较慢，适合大规模数据存储和传输。
+
+这就导致了传统的Attention计算过程需要频繁地在SRAM和HBM之间进行数据传输, 这会带来显著的性能瓶颈。FlashAttention通过优化计算流程，减少了这种数据传输的次数，从而提高了整体的计算效率。因此FlashAttention的核心优化点在于减少内存访问次数，充分利用SRAM的高速性能，同时降低对HBM的依赖，从而实现更高效的Attention计算。
+
 
 ### 传统分块计算过程
 例如原本的$QK^{T}$一次计算过程进行拆分, 分别将$Q$和$K^{T}$划分为为$m$,和$n$个小块, 然后依次将$m_{i}$和$n_{i}$小块计算的结果放置到指定的区域. 当然, 这样操作会带来额外的通讯次数的开销, 变成m * n, 但对于存储架构来说, SRAM与HBM的通信速率是非常快的, 在这里的通讯次数开销是可以接受的.
@@ -37,25 +48,23 @@ Attention标准实现没有考虑到对内存频繁的IO操作, 它基本上将H
 FlashAttention改进了计算过程, 所有计算过程统一在SRAM中计算, 将最终的计算结果返回给HBM, 只进行一次读写. 其过程如下.
 ![FlashAttention对内存读写的改进](/content_img/NLP/LLM_Learning/Attention/MemoryOperator.jpg)
 
-#### safe-softmax分块计算过程
+#### online-softmax 分块计算原理
+原本softmax 需要先计算出所有的$S_{ij}$, 然后再进行softmax计算, 但是FlashAttention的online-softmax算法, 通过分块计算的方式, 在每个块计算完之后就进行softmax计算, 并且在计算过程中维护一个全局的最大值和指数和, 来保证数值稳定性. 具体来说, 在每个块计算完之后, 会更新全局的最大值和指数和, 以便在下一个块计算时使用. 这样做不仅可以节约内存带宽，还可以提高计算效率.
+核心公式如下:
 
-查看详细计算过程: [小红书: 图解Flash Attention核心原理](https://www.xiaohongshu.com/explore/67d4e91e000000000901720a?xsec_token=ABxaNRZEX3g8l0A3SUDzsd3sxufbg_wFT3Atk1szS-c4s=&xsec_source=pc_collect)
+$𝑚_{𝑛𝑒𝑤}=max⁡(𝑚_{𝑜𝑙𝑑}−𝑚_{c})$
 
-### 相关内容补充
-内存不是一个单一的工件，它在本质上是分层的，一般的规则是:内存越快，越昂贵，容量越小。因此和木桶原理类似, 需要考虑到每个模块的瓶颈。 
-![内存速率图](/content_img/NLP/LLM_Learning/Attention/Memory.jpg)
-RAM主要分为两类：
-- 静态随机存取存储器（Static Random-Access Memory，SRAM）
-  - SRAM以其高速访问特性被广泛应用于缓存等场景
-- 动态随机存取存储器（Dynamic Random Access Memory，DRAM）
-  - DRAM则因其较高的存储密度和成本效益被广泛用作主内存。
-  - 同步动态随机存取内存（synchronous dynamic random-access memory，SDRAM）
-    - 同步动态随机存取存储器（SDRAM）：随着处理器速度的提升，为了减少内存与CPU之间的速度差异，SDRAM被引入，它允许在单个时钟周期内完成数据的读写。
-  - 双倍速率 SDRAM（Double Data Rate SDRAM, DDR SDRAM）
-    - DDR SDRAM通过在时钟的上升沿和下降沿都能进行数据传输，实现了数据传输速率的翻倍。
+$𝑙_{𝑛𝑒𝑤}=𝑙_{𝑜𝑙𝑑} ·𝑒^{(𝑚_{𝑜𝑙𝑑}−𝑚_{𝑛𝑒𝑤} )}+𝑙_{c} ·𝑒^{(𝑚_{c}−𝑚_{𝑛𝑒𝑤} )}$
 
-HBM高带宽存储器（High Bandwidth Memory，HBM）<br>
-HBM是一种创新的3D堆叠DRAM技术，由AMD和SK海力士联合开发。它通过将多层DRAM芯片垂直堆叠，并使用高带宽的串行接口与GPU或CPU直接相连，从而提供了远超传统DRAM的带宽和容量。
+其中:
+- 𝑚_{𝑐}: 当前块最大值
+- 𝑚_{𝑜𝑙𝑑}: 当前全局最大值
+- 𝑙_{𝑐}: 当前块局部指数和
+- 𝑙_{𝑜𝑙𝑑}: 当前全局分母 指数和
+
+详细计算原理示例及讲解: [小红书: 图解Flash Attention核心原理](http://xhslink.com/o/7622DEwSF21 )
+
+![online_softmax_example](image/Attention/online_softmax_example.png)
 
 
 ## 共享KV 

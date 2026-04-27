@@ -293,9 +293,6 @@ def dpo_loss(self, policy_chosen_logps, policy_rejected_logps, reference_chosen_
 PPO 是一种基于策略梯度的强化学习算法，旨在通过限制更新步长来减少策略更新时的变化过大，从而提高稳定性。它通过"裁剪"目标函数来避免策略更新过快（从而导致训练的不稳定）。
 
 ### PPO的工作
-1. 推出：语言模型根据查询生成响应。
-2. 评估：使用函数、模型、人工反馈或它们的某种组合来评估查询和响应。此过程应为每个查询/响应对生成一个标量值。
-3. 优化：在优化步骤中，查询/响应对用于计算序列中标记的对数概率。这是通过训练后的模型和参考模型完成的。两个输出之间的 KL 散度用作额外的奖励信号，以确保生成的响应不会偏离参考语言模型太远。然后使用 PPO 训练主动语言模型。
 ![PPO](/content_img/NLP/LLM_Learning/LLM-Pipline/PPO1.png)
 ![PPO](/content_img/NLP/LLM_Learning/LLM-Pipline/PPO2.png)
 
@@ -307,24 +304,20 @@ PPO 是一种基于策略梯度的强化学习算法，旨在通过限制更新�
 
 Critic/Reward/Reference Model共同组成了一个“奖励-loss”计算体系，综合它们的结果计算loss，用于更新Actor和Critic Model
 
-### 第一个阶段，经验采样
-　actor: 根据prompt数据集生成repsonse, 对于response中每一个token对应的log_prob记为log_probs。<br>
-　reference: actor生成的 prompt+response 作为输入, 记录 prompt+response 的每个token的log_prob，记为ref_log_probs。<br>
-　critic: reward模型根据prompt+response输出values和reward。<br>
+### 公式
+$$
+\mathcal{J}_{P P O}(\theta)=\mathbb{E}\left[q \sim P(Q), o \sim \pi_{\theta_{o l d}}(O \mid q)\right] \frac{1}{|o|} \sum_{t=1}^{|o|} \min \left[\frac{\pi_\theta\left(o_t \mid q, o_{<t}\right)}{\pi_{\theta_{o l d}}\left(o_t \mid q, o_{<t}\right)} A_t, \operatorname{clip}\left(\frac{\pi_\theta\left(o_t \mid q, o_{<t}\right)}{\pi_{\theta_{o l d}}\left(o_t \mid q, o_{<t}\right)}, 1-\varepsilon, 1+\varepsilon\right) A_t\right],
+$$
+其中 $ A_t=R_t−𝑉(𝑠_𝑡) $, 用于计算生成内容的相对平均水平的“好坏偏差”，用于指导低于平均水平的内容, 让其向目标方向优化.
 
-KL散度公式
-$$ D_{KL}(P||Q) = \sum_{i} P(i) \log \frac{P(i)}{Q(i)} $$
 
-优点：
-1. 稳定性：PPO 通过对目标函数进行裁剪，避免了策略的过大更新，减少了训练过程中的不稳定性。
-2. 样本效率较高：相比于原始的强化学习算法（如REINFORCE），PPO 在样本效率上表现较好，能更快速地学习。
-3. 易于实现：PPO 是一种相对容易实现且表现稳健的算法，尤其适合用于复杂的环境中进行训练。
+### 模型输入输出
+- actor: 根据输入的 prompt 生成 repsonse, 对于 response 中每一个 token 对应的log_prob 记为 log_probs。<br>
+- reference: actor 生成的 prompt + response 作为输入, 记录 prompt + response 的每个 token 的 log_prob，记为 ref_log_probs。<br>
+- reward: actor 生成的 prompt + response 作为输入, 输出一个 reward score. <br>
+- critic: 给生成过程中的每个时间步/状态估计, 当前时间步, [prompt + 前置 response + 预测的 token] 如输入到 value 模型输出的得分, value score. <br>
 
-缺点：
-1. 适用场景限制：PPO 偏向于需要大量交互并且训练时间较长的任务，对于某些即时反馈或小样本场景可能表现不佳。
-2. 计算资源要求：尽管相比其他方法更为高效，但在处理大型问题时，仍然需要较为充足的计算资源。
-
-同样的, RL训练器使用 [trl.PPOTrainer](https://huggingface.co/docs/trl/main/en/ppo_trainer#ppo-trainer).<br>
+通过优化模型的输出概率比值, 和 reward score - value score 的 advantage 得分, 来优化模型的输出概率分布, 使得生成内容的 reward score 尽可能高, 同时又不偏离原来模型的输出分布太远(通过 KL 散度来衡量).<br>
 
 ### 数据
 ```json
@@ -334,24 +327,41 @@ $$ D_{KL}(P||Q) = \sum_{i} P(i) \log \frac{P(i)}{Q(i)} $$
   "reward": 0.78  // 模型、规则、人工打分
 }
 ```
+### 代码部分
 
-### Loss
+
+同样的, RL训练器使用 [trl.PPOTrainer](https://huggingface.co/docs/trl/main/en/ppo_trainer#ppo-trainer).<br>
+
+#### Loss
 具体代码实现: https://github.com/huggingface/trl/blob/main/trl/trainer/ppo_trainer.py#L500
 
 
 ## GRPO（Generalized Reward Policy Optimization）
 出自论文: [DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models](https://arxiv.org/pdf/2402.03300)
 
+### 核心公式
+$$
+\begin{aligned}
+\mathcal{J}_{G R P O}(\theta) & =\mathbb{E}\left[q \sim P(Q),\left\{o_i\right\}_{i=1}^G \sim \pi_{\theta_{\text {old }}}(O \mid q)\right] \\
+& \frac{1}{G} \sum_{i=1}^G \frac{1}{\left|o_i\right|} \sum_{t=1}^{\left|o_i\right|}\left\{\min \left[\frac{\pi_\theta\left(o_{i, t} \mid q, o_{i,<t}\right)}{\pi_{\theta_{\text {old }}}\left(o_{i, t} \mid q, o_{i,<t}\right)} \hat{A}_{i, t}, \operatorname{clip}\left(\frac{\pi_\theta\left(o_{i, t} \mid q, o_{i,<t}\right)}{\pi_{\theta_{\text {old }}}\left(o_{i, t} \mid q, o_{i,<t}\right)}, 1-\varepsilon, 1+\varepsilon\right) \hat{A}_{i, t}\right]-\beta \mathbb{D}_{K L}\left[\pi_\theta| | \pi_{r e f}\right]\right\},
+\end{aligned}
+$$
+
+
 GRPO优化过程中, 和PPO类似, 需要三个模型: 
 Policy_model(优化模型), reference_model, reward_model.
 
 ![GRPO](/content_img/NLP/LLM_Learning/LLM-Pipline/GRPO.png)
 
+
 其中, 奖励的分值可以由规则来替代, 比如最后的答案为目标答案则给2分. 因此规则简单的情况下可以使用 reward_funcs 代替 reward_model.
 若不担心模型训歪, reference_model也可以不使用, 因此最小仅需一个模型就可以使GRPO训练起来[代码](https://github.com/huggingface/trl/blob/v0.21.0/trl/trainer/grpo_trainer.py#L430).
 
-GRPO相对于PPO, 主要思路是：<b>丢掉 KL 散度项 和 Value Model，改为同一个问题进行多个回答</b> 
-具体流程大致为, 使用策略模型根据同一个prompt, 生成多个回答, 然后对所有回答进行 “group 内排名 + z-score 归一化”, 作为奖励信号.
+GRPO相对于PPO, 主要思路是：<b>丢掉 Value Model，改为同一个问题进行多个回答</b> 
+
+GRPO具体流程大致为, 使用策略模型根据同一个prompt, 生成多个回答, 然后对所有回答进行 “group 内排名 + z-score 归一化”, 作为 advantage 信号, 
+
+而PPO 需要 Reward Model 的得分和 Value 对输出序列的 advantage 得分做差值计算 .
 ```markdown
 比如某个 prompt，我们生成了 4 个回答，reward model 给出分数是：
 [1.2, 0.7, 1.5, 0.9]
@@ -376,7 +386,6 @@ GRPO的数据流大致如下.
   "rewards": [0.85, 0.62, 0.71]
 }
 ```
-
 
 ### DPO、PPO、GRPO 对比
 
