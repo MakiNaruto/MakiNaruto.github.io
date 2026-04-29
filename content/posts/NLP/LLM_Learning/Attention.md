@@ -23,7 +23,7 @@ Attention标准实现没有考虑到对内存频繁的IO操作, 它基本上将H
 ### 相关内容补充
 内存不是一个单一的工件，它在本质上是分层的，一般的规则是:内存越快，越昂贵，容量越小。因此和木桶原理类似, 需要考虑到每个模块的瓶颈。 
 
-![内存速率图](/content_img/NLP/LLM_Learning/Attention/Memory.jpg)
+![内存速率图](/content_img/NLP/LLM_Learning/Attention/Memory.jpg "50%")
 
 - SRAM（Static Random Access Memory）是一种高速缓存内存，通常用于CPU和GPU的缓存层。它具有较低的访问延迟和较高的带宽，但成本较高，容量较小。SRAM的访问速度非常快，适合频繁访问的数据存储和计算操作。<br>
 
@@ -34,7 +34,7 @@ Attention标准实现没有考虑到对内存频繁的IO操作, 它基本上将H
 
 ### 传统分块计算过程
 例如原本的$QK^{T}$一次计算过程进行拆分, 分别将$Q$和$K^{T}$划分为为$m$,和$n$个小块, 然后依次将$m_{i}$和$n_{i}$小块计算的结果放置到指定的区域. 当然, 这样操作会带来额外的通讯次数的开销, 变成m * n, 但对于存储架构来说, SRAM与HBM的通信速率是非常快的, 在这里的通讯次数开销是可以接受的.
-![传统分块计算过程](/content_img/NLP/LLM_Learning/Attention/flash_att_cal1.jpg)
+![传统分块计算过程](/content_img/NLP/LLM_Learning/Attention/flash_att_cal1.jpg "50%")
 
 通信过程, 整个过程需要6次通信, 3次写入到SRAM, 3次到HBM中.
 1. 将矩阵 Q 和K从 HBM 分块加载到 SRAM 中
@@ -69,7 +69,7 @@ $𝑙_{𝑛𝑒𝑤}=𝑙_{𝑜𝑙𝑑} ·𝑒^{(𝑚_{𝑜𝑙𝑑}−𝑚_{�
 
 ## 不同的Attention结构
 多个Head共享使用1组KV，将原来每个Head一个KV，变成1组Head一个KV，来压缩KV的存储。代表方法：GQA，MQA等
-![MHA, MQA, GQA, MLA](/content_img/NLP/LLM_Learning/Attention/DeepSeekV2.png )
+![MHA, MQA, GQA, MLA](/content_img/NLP/LLM_Learning/Attention/DeepSeekV2.png "80%")
 ### <b>Multi-Head Attention</b>
 图1, 每一层的所有Head都独立拥有自己的KQV权重矩阵, 计算时各自使用自己的权重计算.
 ### <b>Multi-Query Attention</b>
