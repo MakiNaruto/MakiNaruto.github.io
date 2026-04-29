@@ -3,7 +3,7 @@ author : MakiNaruto
 title : MarkDown 常用的语法
 description : 在编写hugo博客中, 常用的markdown语法记录。
 toc : true
-date : 2025-01-29
+date : 2025-01-01
 tags : 
   - markdown
   - syntax

@@ -3,7 +3,7 @@ author : MakiNaruto
 title : LLM - Training PipLine
 description : 一个完整的大模型的训练流程是如何进行的
 toc : true
-date : 2025-01-21
+date : 2025-10-21
 tags : 
   - LLM
   - PreTraining
