@@ -54,9 +54,15 @@ Total = 模型 + 梯度 + 优化器状态 + activation<br>
 
 
 #### Activation
-M_act ≈ C × L × B × S × H × bytes
-  $$Mact≈L⋅B⋅S⋅H⋅(3(QKV)+1(attn out)+4(MLP  expand)+4(MLP intermediate + residual))⋅bytes$$
-  $$Mact≈12⋅L⋅B⋅S⋅H⋅bytes$$(C ≈ 10~20（经验值）)
+
+$$ M_{act} ≈ C × L × B × S × H × bytes $$
+
+$$ M_{act}≈L⋅B⋅S⋅H⋅(3(QKV)+1(attn_{out})+4(MLP_{expand})+4(MLP_{intermediate} + residual))⋅bytes $$
+
+一般来说, C 的值在 10~15 之间, 取决于模型的具体实现和优化策略. 其中, QKV 的计算需要存储3倍的激活值, attention 输出需要存储1倍的激活值, MLP 扩展和中间层需要存储4倍的激活值, 最后残差连接也需要存储4倍的激活值. 因此, 总体上可以近似估算为:
+$$ 
+M_{act} ≈ 12⋅L⋅B⋅S⋅H⋅bytes 
+$$ 
 
 
 📊 显存优化效果对比<br>
