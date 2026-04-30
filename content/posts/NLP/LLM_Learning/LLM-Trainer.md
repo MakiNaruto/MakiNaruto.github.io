@@ -1,7 +1,7 @@
 ---
 author : MakiNaruto
-title : LLM - Training PipLine
-description : 一个完整的大模型的训练流程是如何进行的
+title : LLM - Training Target
+description : 各阶段大模型训练的数据流处理和优化目标.
 toc : true
 date : 2025-10-21
 tags : 
@@ -17,12 +17,72 @@ tags :
 header_img : content_img/NLP/WestWorld.jpg
 
 ---
-# 大模型工作流程
-预训练、有监督微调、RLHF(奖励建模、强化学习训练)和DPO(直接偏好优化)的主要流程图如下图所示:<br>
-![GPT训练流程](/content_img/NLP/LLM_Learning/LLM-Pipline/gpt_training.jpg)
 
-下面会分开介绍, 每个流程训练时, 所处理的数据, 以及loss等核心模块做了什么.
 
+## LoRA
+LoRA 通过对线性层引入两个低秩矩阵, 来优化线性层的权重矩阵, 其中一个矩阵是输入序列的线性变换, 另一个矩阵是一个小的可学习参数矩阵. 
+
+训练期间和训练后的 LoRA 示意图:
+![](/content_img/NLP/LLM_Learning/LLM-Tips/lora.png)
+
+原始一个标准线性层是：$y = Wx$,  LoRA把权重拆成：$W' = W + \Delta W$, 但关键是：$\Delta W = BA$
+
+其中：
+* $A \in \mathbb{R}^{r \times d}$
+* $B \in \mathbb{R}^{d' \times r}$
+* $r \ll d（低秩）$
+
+因此在数学上, 最终变成：$y = Wx + BAx$, 可以看做是 **并联（residual形式）叠加**, 结构更像：
+
+```
+        ┌─────── W ───────┐
+x ──────┤                 ├─── + ───► y
+        └─ A ─► B -───────┘
+```
+
+
+---
+
+[HuggingFace 实现的LoRA代码核心部分](https://github.com/huggingface/peft/blob/main/src/peft/tuners/lora/layer.py#L1293)
+
+将上面代码的内容抽象出来, 可以简要的整理为: 
+
+```python
+
+def forward(self, x):
+    result = super().forward(x)  # Wx
+
+    if self.r > 0:
+        lora_output = self.lora_B(self.lora_A(x))
+        result += lora_output * self.scaling
+
+    return result
+```
+
+上面的内容仅为一个线性层, 在实际的模型中, LoRA会被应用到多个线性层中, 例如Transformer中的QKV权重矩阵, MLP中的权重矩阵等. 因此, 在实际的模型中, LoRA会被应用到多个线性层中, 例如Transformer中的QKV权重矩阵, MLP中的权重矩阵等.
+如PEFT使用时, 可以通过指定 target_modules 来选择需要应用 LoRA 的线性层, 例如:
+```python   
+from peft import LoraConfig, get_peft_model
+model = ...  # 预训练模型
+lora_config = LoraConfig(
+    r=8,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],  # 选择应用 LoRA 的线性层
+    lora_alpha=16,
+    init_lora_weights="gaussian",
+)
+model = get_peft_model(model, lora_config)
+```
+
+最终, 在训练完成后, 可以将 LoRA 权重合并到基础模型中, 以便在推理阶段使用. 具体的合并方法可以参考 HuggingFace 的文档: [将 LoRA 权重合并到基础模型中](https://huggingface.co/docs/peft/main/en/conceptual_guides/lora)
+
+```python
+from peft import LoftQConfig, LoraConfig, get_peft_model
+
+base_model = AutoModelForCausalLM.from_pretrained(...)  # don't quantize here
+loftq_config = LoftQConfig(loftq_bits=4, ...)           # set 4bit quantization
+lora_config = LoraConfig(..., init_lora_weights="loftq", loftq_config=loftq_config)
+peft_model = get_peft_model(base_model, lora_config)
+```
 
 ## PT
 ### 数据
@@ -81,23 +141,19 @@ def ForCausalLMLoss(
 
 ## SFT
 ### 数据
-数据格式要求: QA格式, 需一问一答.
-```
-[
-    {
-        "from": "human",
-        "value": "两只脚明显大小不一样，腿也不一样粗，该怎么办，两只脚明显大小不一样，腿也不一样粗，该怎么办，需要做什么检查"
-    },
-    {
-        "from": "gpt",
-        "value": "，与走路姿势没有关系的，人的器官，没有完全对称的，只是有的不是很明显的，这很正常的，只要健康就好。只有手术能纠正的。"
-    }
-]
+数据格式要求: QA格式, 需一问一答. 例如 llamaFactory的数据输入![示例](https://llamafactory.readthedocs.io/zh-cn/latest/getting_started/data_preparation.html#alpaca)
+
+``` alpaca_zh_demo.json
+{
+  "instruction": "计算这些物品的总费用。 ",
+  "input": "输入：汽车 - $3000，衣服 - $100，书 - $20。",
+  "output": "汽车、衣服和书的总费用为 $3000 + $100 + $20 = $3120。"
+}
 ```
 
-将问题与答案进行拼接, 这里按照模型输入长度对数据进行切分. 比如模型最大输入长度为8192. <br>
+做数据预处理后, 最终送进SFT模型的输入内容和PT一样, 都是一整条文本, 即 instruction + input + output. 但区别在于, 在SFT阶段, 其输入的 instruction + input部分做了mask. 因此, 其loss计算时, 只会关注模型对output部分的预测损失, 达到对输入的 next word|sentence predict.
 
-将问答拼接后, 和PT流程一样, 区别在于, 在此阶段将所有问题部分进行-100标记, 转换数据格式如下. -100是为了使模型预测时, 只关注输出的内容.
+因此, 在此阶段将所有问题部分进行-100标记, 转换数据格式如下. -100是为了使模型预测时, 只关注输出的内容. 这里的 input_ids 即为 instruction + input + output 拼接后的文本转换为序列的内容.
 
 ```
 训练数据集
@@ -109,7 +165,7 @@ def ForCausalLMLoss(
 ```
 
 ### Loss
-和PT阶段一样.
+去掉labels中被标记为-100的部分, 计算模型对output部分的预测损失. 其余部分的计算方式和PT阶段一样, 也是对每一个词的预测损失进行优化, 达到对输入的 next word|sentence predict.
 
 ## RM
 ### 数据
@@ -329,6 +385,7 @@ $$
   "reward": 0.78  // 模型、规则、人工打分
 }
 ```
+
 ### 代码部分
 
 

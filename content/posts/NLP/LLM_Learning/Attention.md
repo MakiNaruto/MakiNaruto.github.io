@@ -13,17 +13,14 @@ header_img : content_img/NLP/WestWorld.jpg
 ---
 
 背景:
+大模型进行推理或训练时, Attention计算是其中最核心的计算模块之一, 也是计算量最大的模块之一. 因此, 如何优化Attention的计算效率和性能, 是提升大模型整体性能的关键所在. Attention的计算过程涉及到大量的矩阵乘法和softmax操作, 当输入序列较长时, 计算过程会变得非常缓慢且耗费内存. 因此, 业界提出了几种加速方案, 包括FlashAttention、不同的Attention结构（如Multi-Query Attention、Group-Query Attention等）以及Page Attention等. 这些方法通过优化计算流程、减少内存访问次数以及改进Attention结构等方式, 来提高Attention的计算效率和性能.
 当输入序列（sequence length）较长时, Transformer的计算过程缓慢且耗费内存，即计算的矩阵会变得很大, 这是因为self-attention的<b>计算时间</b>和<b>内存存取复杂度</b>会随着<b>输入序列</b>的增加成二次增长。因此业界提出了几种加速方案.
 
-## FlashAttention
-Attention标准实现没有考虑到对内存频繁的IO操作, 它基本上将HBM加载/存储操作视为0成本。因此FlashAttention的优化方案是通过“split attention”的方式, 将多个操作融合在一起, 只从HBM加载一次，然后将结果写回来。减少了内存带宽的通信开销，并且采用了高效的GPU实现, 极大地提高了效率。<br>
-核心：用分块softmax等价替代传统softmax。<br>
-优点：节约HBM，高效利用SRAM，省显存，提速度。<br>
+## 工程角度优化
+### FlashAttention
+Attention标准实现没有考虑到对内存频繁的IO操作, 它基本上将HBM加载/存储操作视为0成本。内存不是一个单一的工件，它在本质上是分层的，一般的规则是:内存越快，越昂贵，容量越小。因此和木桶原理类似, 需要考虑到每个模块的瓶颈。 
 
-### 相关内容补充
-内存不是一个单一的工件，它在本质上是分层的，一般的规则是:内存越快，越昂贵，容量越小。因此和木桶原理类似, 需要考虑到每个模块的瓶颈。 
-
-![内存速率图](/content_img/NLP/LLM_Learning/Attention/Memory.jpg "50%")
+![GPU内存速率图](/content_img/NLP/LLM_Learning/Attention/Memory.jpg "50%")
 
 - SRAM（Static Random Access Memory）是一种高速缓存内存，通常用于CPU和GPU的缓存层。它具有较低的访问延迟和较高的带宽，但成本较高，容量较小。SRAM的访问速度非常快，适合频繁访问的数据存储和计算操作。<br>
 
@@ -32,7 +29,7 @@ Attention标准实现没有考虑到对内存频繁的IO操作, 它基本上将H
 这就导致了传统的Attention计算过程需要频繁地在SRAM和HBM之间进行数据传输, 这会带来显著的性能瓶颈。FlashAttention通过优化计算流程，减少了这种数据传输的次数，从而提高了整体的计算效率。因此FlashAttention的核心优化点在于减少内存访问次数，充分利用SRAM的高速性能，同时降低对HBM的依赖，从而实现更高效的Attention计算。
 
 
-### 传统分块计算过程
+#### 传统分块计算过程
 例如原本的$QK^{T}$一次计算过程进行拆分, 分别将$Q$和$K^{T}$划分为为$m$,和$n$个小块, 然后依次将$m_{i}$和$n_{i}$小块计算的结果放置到指定的区域. 当然, 这样操作会带来额外的通讯次数的开销, 变成m * n, 但对于存储架构来说, SRAM与HBM的通信速率是非常快的, 在这里的通讯次数开销是可以接受的.
 ![传统分块计算过程](/content_img/NLP/LLM_Learning/Attention/flash_att_cal1.jpg "50%")
 
@@ -44,7 +41,7 @@ Attention标准实现没有考虑到对内存频繁的IO操作, 它基本上将H
 5. 将矩阵 P和V从 HBM 分块加载到 SRAM 中。
 6. 将P和V分成较小的块，逐块计算 $O_{ij} =P_{i}V_{j}$，并将每个子矩阵 $O_{ij}$ 从 SRAM 写入 HBM.
 
-### FlashAttention的改进
+#### FlashAttention的改进
 FlashAttention改进了计算过程, 所有计算过程统一在SRAM中计算, 将最终的计算结果返回给HBM, 只进行一次读写. 其过程如下.
 ![FlashAttention对内存读写的改进](/content_img/NLP/LLM_Learning/Attention/MemoryOperator.jpg "50%")
 
@@ -67,16 +64,29 @@ $𝑙_{𝑛𝑒𝑤}=𝑙_{𝑜𝑙𝑑} ·𝑒^{(𝑚_{𝑜𝑙𝑑}−𝑚_{�
 ![online_softmax_example](/content_img/NLP/LLM_Learning/Attention/online_softmax_example.png "50%")
 
 
-## 不同的Attention结构
+### Page Attention
+由于传统申请连续内存的方式在处理长序列时会导致内存碎片化和性能下降, Page Attention通过将内存划分为固定大小的页面（pages）, 并使用虚拟地址空间来管理这些页面的访问和存储, 这种机制允许模型在处理长序列时, 可以更灵活地管理内存资源, 从而提高计算效率和性能.
+
+具体来说, Page Attention通过将输入序列划分为多个页面（pages）, 每个页面可以独立地进行Attention计算, 并且通过虚拟地址空间来管理这些页面的访问和存储. 这样做不仅可以减少内存的使用, 还可以提高模型在处理长序列时的效率和性能.
+
+示例及详解 https://zhuanlan.zhihu.com/p/9632325957
+
+
+## 算法角度优化
+
+### 共享 KV 的思路
 多个Head共享使用1组KV，将原来每个Head一个KV，变成1组Head一个KV，来压缩KV的存储。代表方法：GQA，MQA等
 ![MHA, MQA, GQA, MLA](/content_img/NLP/LLM_Learning/Attention/DeepSeekV2.png "80%")
-### <b>Multi-Head Attention</b>
+
+#### <b>Multi-Head Attention</b>
 图1, 每一层的所有Head都独立拥有自己的KQV权重矩阵, 计算时各自使用自己的权重计算.
-### <b>Multi-Query Attention</b>
+
+#### <b>Multi-Query Attention</b>
 图2, 每一层的所有Head，按照数量分组, 一组的成员, 在计算Attention时, KV权重矩阵是共享的, 只有Q权重矩阵是独立的. 
 
 例如每个Head中的Q权重矩阵是独立的, 但每组的Q权重共享一组KV权重矩阵, 这样就减少了KV的存储, 当然也会损失一定的性能. 比如原来MHA的Head有8个KQV权重矩阵,  现在进行分组后, 每两个Q权重矩阵共享一组KV权重矩阵, 则现在每个Head8个Q权重矩阵, 但只有4个KV权重矩阵, KV的存储就减少了一半. 
-### <b>Group-Query Attention</b>
+
+#### <b>Group-Query Attention</b>
 图3, 每个Head的Q权重矩阵是独立的, 但所有Head共享一组KV权重矩阵, 这样就进一步减少了KV的存储, 当然也会损失更多的性能. 比如原来MHA的Head有8个KQV权重矩阵, 现在进行分组后, 每个Head8个Q权重矩阵, 但只有1个KV权重矩阵, KV的存储就减少了7/8.
 
 输入$X$在一个Head得到的矩阵为$Q, K, V$, 假设Head数量为4, 分组数量G为2,  现在我们得到的矩阵如下:
@@ -129,7 +139,7 @@ I_{d_v} & I_{d_v} & 0 & 0 \\
 0 & 0 & I_{d_v} & I_{d_v} \\
 \end{array}\right]\\$$
 
-### <b>Multi-Head Latent Attention</b>
+#### <b>Multi-Head Latent Attention</b>
 MLA由GQA和GQA的基础上发展而来, 其核心思想是将每个Transformer层的KV权重矩阵分解成两个低秩矩阵, 其中一个矩阵是输入序列的线性变换, 另一个矩阵是一个小的可学习参数矩阵. 这样做的好处是可以大幅减少KV权重矩阵的存储需求, 同时保持较好的性能.
 
 $$ 令 C^{KV} = XW^{KV}$$
@@ -140,13 +150,6 @@ $$ 令 C^{KV} = XW^{KV}$$
 
 ⭐️推荐观看, 可视化讲解, https://www.bilibili.com/video/BV17QSpBDEHG
 
-
-## Page Attention
-由于传统申请连续内存的方式在处理长序列时会导致内存碎片化和性能下降, Page Attention通过将内存划分为固定大小的页面（pages）, 并使用虚拟地址空间来管理这些页面的访问和存储, 这种机制允许模型在处理长序列时, 可以更灵活地管理内存资源, 从而提高计算效率和性能.
-
-具体来说, Page Attention通过将输入序列划分为多个页面（pages）, 每个页面可以独立地进行Attention计算, 并且通过虚拟地址空间来管理这些页面的访问和存储. 这样做不仅可以减少内存的使用, 还可以提高模型在处理长序列时的效率和性能.
-
-示例及详解 https://zhuanlan.zhihu.com/p/9632325957
 
 ## 参考地址
 [[1] deepseek-v2](deepseek-v2:https://arxiv.org/pdf/2405.04434)<br>

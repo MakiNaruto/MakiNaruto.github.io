@@ -4,8 +4,7 @@ title : LLM - GPU显存占用
 toc : true
 date : 2025-01-15
 tags : 
-  - DeepLearning
-  - TrainingMethods
+  - LLM
   - GPUMemory
 
 header_img : content_img/NLP/WestWorld.jpg

@@ -45,18 +45,6 @@ $(-1)^{1} \times 2^{30 - 15} \times (1 + \frac{1023}{1024}) $ <br>
 | fp16 |    半精度浮点数<br>（Half-precision floating-point）    |   1   |  5  | 10  | 16  |  2  |          $[-65504, 65504]$          |
 | bf16 |       Brain 浮点数<br>（Brain floating-point）       |   1   |  8  |  7  | 16  |  2  | $[-3.39 × 10^{38}, 3.39 × 10^{38}]$ |
 
-### 计算
-比如一个14B的模型, 其中所有的数据精度都为fp16(16位, 2byte).
-那么加载模型时, 先进行单位换算, 
-1 byte = 8 bits<br>
-1 KB = 1,024 bytes<br>
-1 MB = 1,024 KB<br>
-1 GB = 1,024 MB<br>
-
-因为每个数据精度都为fp16, 占2字节, 所以需要先乘以2. 计算公式为: <br>
-1,400,000,000 * 2 / 1024 / 1024 / 1024 ≈ 1,400,000,000 * 2 / $10^{9}$ ≈ 28G
-
-由此, 以B为单位的模型, 可以直接进行粗略计算, 使用 字节数 * 前面的数字, 计算单位为G. 比如一个 14B 的大模型, 以fp16方式加载后, 预计推理需要的显存大小为: 14 * 2 = 28G 
 
 ## Loss图像
 常见激活函数的图像:
@@ -72,29 +60,6 @@ $(-1)^{1} \times 2^{30 - 15} \times (1 + \frac{1023}{1024}) $ <br>
 </div>
 
 <b>其他激活函数: </b>[non-linear-activations](https://pytorch.org/docs/stable/nn.html#non-linear-activations-weighted-sum-nonlinearity)
-
-## LoRA
-### LoRA加速原理
-
-比如有非常大维度的权重矩阵 W, 其维度为1024x2048.  
-
-1. 首先，我们将这个权重矩阵冻结，即不再对其进行更新。
-2. 引入低秩矩阵: 我们用两个更小的矩阵A, B 代替 W. A: 1024x32，B: 32x2048。
-3. 计算新的输出: 在进行前向传播时，我们将输入向量先与A相乘，得到一个维度为32的中间向量。然后，将这个中间向量与B相乘，得到最终的输出。这个过程可以表示为：<br>
-output = input @ A @ B
-4. 训练低秩矩阵: 在训练过程中，我们只更新A和B这两个小矩阵的参数，而原始的权重矩阵保持不变。由于A和B的维度远小于原始的权重矩阵，因此训练速度会大大加快。
-5. 训练结束后合并矩阵: 将更新加到原始权重矩阵: 将计算得到的 ΔW 加到原始的权重矩阵 W 上，得到新的权重矩阵 W'：<br>
-ΔW = A @ B<br>
-W' = W + ΔW<br>
-也就是当我们训练完毕推理时, 使用的为合并后的矩阵.
-
-LoRA只操作模型的线性层, 并且一般不会对lm_head进行参数的更新.
-
-训练期间和训练后的 LoRA 示意图:
-![](/content_img/NLP/LLM_Learning/LLM-Tips/lora.png)
-
-
-[将 LoRA 权重合并到基础模型中](https://huggingface.co/docs/peft/main/en/conceptual_guides/lora) 
 
 ## embedding
 大模型本身是有embedding层的, 不需要去再加载一些单独训练的embedding了, 其embedding的维度和字典的维度不相同. 但在传统的Word2vec、bert等模型中, 其embedding是与字典的长度相同的. 为什么会有这个差异?
