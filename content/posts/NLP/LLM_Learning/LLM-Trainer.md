@@ -17,7 +17,7 @@ tags :
 header_img : content_img/NLP/WestWorld.jpg
 
 ---
-
+这里主要介绍大模型训练的各个阶段, 包括预训练(Pre-Training), 监督微调(Supervised Fine-Tuning), 人类反馈强化学习(Reinforcement Learning with Human Feedback)等阶段的训练目标, 数据处理方式和优化目标. 以及在这些阶段中, 常用的参数高效微调方法LoRA的原理和实现.
 
 ## LoRA
 LoRA 通过对线性层引入两个低秩矩阵, 来优化线性层的权重矩阵, 其中一个矩阵是输入序列的线性变换, 另一个矩阵是一个小的可学习参数矩阵. 
