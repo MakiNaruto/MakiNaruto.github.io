@@ -24,15 +24,6 @@ $$M_{per\_token} = 2 × L × N_{𝑘𝑣} × D (bytes/token)$$
 - B 为batch size
 - L 为层数
 
-以一个7B的模型为例, 其计算方式如图所示.
-
-Total = 模型 + 梯度 + 优化器状态 + activation<br>
-  = 7B * (2bytes + 2bytes + 12bytes) + activation<br>
-  = 7B * 16 bytes + activation<br>
-  = 112 B bytes / (1024 ** 3) + activation<br>
-  ≈ 104GB + activation<br>
-
-
 ### 训练阶段
 存储主要分为两大块：静态显存 + 动态显存<br>
 M_total = 模型参数 + 梯度 + 优化器状态 + Activation<br>
@@ -52,10 +43,21 @@ Model States 指和模型本身息息相关的，必须存储的内容，具体�
 | Adam Optimizer (m/v) | FP32 | 8 |
 | Total / 总计 |  - | 16 Bytes |
 
+
+以一个7B的模型为例, 若不做任何优化, 其显存占用可以估算如下：<br>
+
+Total = 模型 + 梯度 + 优化器状态 + activation<br>
+  = 7B * (2bytes + 2bytes + 12bytes) + activation<br>
+  = 7B * 16 bytes + activation<br>
+  = 112 B bytes / (1024 ** 3) + activation<br>
+  ≈ 104GB + activation<br>
+
+
 #### Activation
 M_act ≈ C × L × B × S × H × bytes
   $$Mact≈L⋅B⋅S⋅H⋅(3(QKV)+1(attn out)+4(MLP  expand)+4(MLP intermediate + residual))⋅bytes$$
   $$Mact≈12⋅L⋅B⋅S⋅H⋅bytes$$(C ≈ 10~20（经验值）)
+
 
 📊 显存优化效果对比<br>
 无 Checkpoint : C≈10\~15 (显存占用极高)<br>
